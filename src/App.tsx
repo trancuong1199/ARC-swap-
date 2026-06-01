@@ -62,15 +62,21 @@ export default function App() {
 
     try {
       setIsMetaMask(true);
-      // Ensure we are on Arc Testnet first
-      await switchOrAddArcNetwork();
       
+      // Request accounts first so the user is prompted to unlock/connect
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
       
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts found. Please unlock your wallet and select an account.");
+      }
+      
       const address = accounts[0];
       setWalletAddress(address);
+      
+      // Ensure we are on Arc Testnet after connecting accounts
+      await switchOrAddArcNetwork();
       
       // Initialize Viem Adapter
       const metamaskAdapter = await createAdapterFromMetaMask();
