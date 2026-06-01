@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { SwapWidget } from './components/SwapWidget';
 import { NetworkStats } from './components/NetworkStats';
 import { ArcAppKit } from './components/ArcAppKit';
+import { Faucet } from './components/Faucet';
 import { Pools } from './components/Pools';
 import { Analytics } from './components/Analytics';
 import { Activity, Layers, Repeat, Wallet } from 'lucide-react';
 
-type ViewState = 'swap' | 'pools' | 'analytics';
+type ViewState = 'swap' | 'pools' | 'analytics' | 'faucet';
 
 interface EIP6963ProviderInfo {
   uuid: string;
@@ -31,30 +32,53 @@ function App() {
   useEffect(() => {
     const discovered: EIP6963ProviderDetail[] = [];
 
-    const handleAnnounce = (event: any) => {
+    const handleAnnounce = async (event: any) => {
       const detail: EIP6963ProviderDetail = event.detail;
       console.log('Discovered wallet:', detail.info.name, detail.info.rdns);
       // Avoid duplicates
       if (!discovered.find(w => w.info.uuid === detail.info.uuid)) {
         discovered.push(detail);
-        // setAvailableWallets([...discovered]);
 
         // Auto-select MetaMask if found
         if (detail.info.rdns === 'io.metamask' || detail.info.name.toLowerCase().includes('metamask')) {
           console.log('Auto-selecting MetaMask provider');
           setWalletProvider(detail.provider);
+          
+          // Auto-connect if previously connected
+          try {
+            const accounts = await detail.provider.request({ method: 'eth_accounts' });
+            if (Array.isArray(accounts) && accounts.length > 0) {
+              setAddress(accounts[0]);
+            }
+          } catch (e) {}
         }
       }
     };
 
     window.addEventListener('eip6963:announceProvider', handleAnnounce);
-    // Trigger all installed wallets to announce
     window.dispatchEvent(new Event('eip6963:requestProvider'));
 
     return () => {
       window.removeEventListener('eip6963:announceProvider', handleAnnounce);
     };
   }, []);
+
+  // Fallback: Attempt to auto-connect with window.ethereum if EIP-6963 is slow or missing
+  useEffect(() => {
+    const attemptAutoConnect = async () => {
+      try {
+        const eth = (window as any).ethereum;
+        if (eth && !walletProvider) {
+          const accounts = await eth.request({ method: 'eth_accounts' });
+          if (Array.isArray(accounts) && accounts.length > 0) {
+            setAddress(accounts[0]);
+          }
+        }
+      } catch (err) {}
+    };
+    // Delay slightly to give EIP-6963 precedence
+    setTimeout(attemptAutoConnect, 500);
+  }, [walletProvider]);
 
   // Fallback: if EIP-6963 found nothing, fall back to window.ethereum
   const getFallbackProvider = useCallback(() => {
@@ -103,9 +127,9 @@ function App() {
   return (
     <div className="app-container">
       <nav className="navbar animate-fade-in">
-        <div className="nav-brand">
+        <div className="nav-brand" onClick={() => setCurrentView('swap')} style={{ cursor: 'pointer' }}>
           <Activity color="#3b82f6" />
-          ARC Swap
+          ARC Finance Studio
         </div>
 
         <div className="nav-links">
@@ -127,6 +151,12 @@ function App() {
           >
             Analytics
           </a>
+          <a
+            className={`nav-link ${currentView === 'faucet' ? 'active' : ''}`}
+            onClick={() => setCurrentView('faucet')}
+          >
+            Faucet
+          </a>
         </div>
 
         <div className="header-controls">
@@ -143,7 +173,7 @@ function App() {
 
       {currentView === 'swap' && (
         <main className="main-grid">
-          <NetworkStats />
+          <NetworkStats connectedAccount={address} />
 
           <div className="widget-switcher-container">
             <div className="glass-panel widget-switcher">
@@ -181,6 +211,12 @@ function App() {
       {currentView === 'analytics' && (
         <main className="page-view">
           <Analytics />
+        </main>
+      )}
+
+      {currentView === 'faucet' && (
+        <main className="page-view">
+          <Faucet connectedAccount={address} />
         </main>
       )}
     </div>

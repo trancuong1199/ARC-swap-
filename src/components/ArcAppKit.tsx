@@ -80,6 +80,9 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
         from,
         explorerUrl: `https://testnet.arcscan.app/tx/${txHash}`,
       }, null, 2));
+
+      // Notify other components that a swap occurred
+      window.dispatchEvent(new Event('swap_executed'));
     } catch (err: any) {
       console.error('Transaction error:', err);
       setStatusMsg(`❌ ${err.message}`);

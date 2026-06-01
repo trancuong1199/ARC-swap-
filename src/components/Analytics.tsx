@@ -16,7 +16,7 @@ export const Analytics: React.FC = () => {
       </div>
 
       {/* Main Stats Component */}
-      <NetworkStats />
+      <NetworkStats connectedAccount={null} />
 
       {/* Additional Mock Analytics content */}
       <div className="glass-panel" style={{ padding: '1.5rem', marginTop: '1rem' }}>
