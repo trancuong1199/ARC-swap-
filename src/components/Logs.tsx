@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Search, Calendar, Filter, ChevronDown, CheckCircle, XCircle } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Search, Calendar, ChevronDown, Filter } from 'lucide-react';
 
 const mockChartData = [
   { time: '08:00', errorCount: 0, successRate: 100 },
@@ -216,7 +216,7 @@ export const Logs: React.FC = () => {
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {mockRequests.map((req, i) => (
+            {mockRequests.map((req) => (
               <div key={req.id} style={{ 
                 display: 'flex', 
                 alignItems: 'center', 

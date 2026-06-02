@@ -28,7 +28,6 @@ const generateMockData = (days: number, baseValue: number, volatility: number) =
   for (let i = days; i >= 0; i--) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
-    const day = date.getDate().toString().padStart(2, '0');
     const month = date.toLocaleString('default', { month: 'short' });
     const year = date.getFullYear().toString().slice(2);
     
@@ -470,7 +469,7 @@ const ChartCard = ({ title, subtitle, data, unit, loading = false, formatter = f
               contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#fff' }}
               itemStyle={{ color: '#60a5fa' }}
               labelStyle={{ color: '#a1a1aa', marginBottom: '8px' }}
-              formatter={(value: number) => [formatter(value), unit]}
+              formatter={(value: any) => [formatter(value), unit]}
             />
             <Area type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={2} fillOpacity={1} fill={`url(#color-${title.replace(/\s+/g, '')})`} />
           </AreaChart>
