@@ -172,14 +172,14 @@ export const Analytics: React.FC = () => {
 
   return (
     <div className="page-container animate-fade-in" style={{ maxWidth: '100%', paddingBottom: '4rem' }}>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0 0 1.5rem 0' }}>Arc Testnet stats</h2>
+      <h2 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 1.75rem 0' }}>Arc Testnet stats</h2>
 
       {/* Grid of Stats Cards */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', 
-        gap: '0.5rem',
-        marginBottom: '2rem'
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', 
+        gap: '1rem',
+        marginBottom: '2.5rem'
       }}>
         <StatCard title="Average block time" value={formatSeconds(stats?.average_block_time || 515)} />
         <StatCard title="Completed txns" value={formatNumber(457216000)} />
@@ -318,7 +318,7 @@ export const Analytics: React.FC = () => {
       {(selectedCategory === 'All stats' || selectedCategory === 'Accounts') && (
         <>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '2rem 0 1rem 0' }}>Accounts</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '1.25rem' }}>
             <ChartCard title="Number of accounts" subtitle="Cumulative account growth over time" data={filteredAccountsData} unit="Accounts" />
             <ChartCard title="Active accounts" subtitle="Active accounts number per period" data={filteredActiveAccountsData} unit="Active Accounts" />
             <ChartCard title="New accounts" subtitle="Number of newly added accounts" data={filteredNewAccountsData} unit="New Accounts" />
@@ -401,22 +401,22 @@ const StatCard = ({ title, value }: { title: string, value: string }) => (
   <div style={{ 
     background: '#18181b', 
     border: '1px solid #27272a', 
-    borderRadius: '8px', 
-    padding: '12px 16px',
+    borderRadius: '12px', 
+    padding: '16px 20px',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    minHeight: '70px',
+    minHeight: '90px',
     position: 'relative',
-    transition: 'border-color 0.2s',
+    transition: 'all 0.2s ease',
     cursor: 'pointer'
   }}
-  className="hover:border-blue-500/30"
+  className="hover:border-blue-500/50 hover:bg-white/5"
   >
-    <div style={{ fontSize: '0.75rem', color: '#a1a1aa', marginBottom: '4px' }}>{title}</div>
-    <div style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '500' }}>{value}</div>
-    <div style={{ position: 'absolute', right: '12px', top: '12px', color: '#3f3f46' }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <div style={{ fontSize: '0.85rem', color: '#a1a1aa', marginBottom: '6px', fontWeight: '500' }}>{title}</div>
+    <div style={{ fontSize: '1.4rem', color: '#fff', fontWeight: '600', letterSpacing: '-0.01em' }}>{value}</div>
+    <div style={{ position: 'absolute', right: '16px', top: '16px', color: '#3f3f46' }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
         <line x1="8" y1="12" x2="16" y2="12"></line>
       </svg>
@@ -429,14 +429,14 @@ const ChartCard = ({ title, subtitle, data, unit, loading = false, formatter = f
   <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
       <div>
-        <h4 style={{ margin: 0, color: '#60a5fa', fontSize: '1rem', fontWeight: '600' }}>{title}</h4>
-        <div style={{ color: '#a1a1aa', fontSize: '0.8rem', marginTop: '4px' }}>{subtitle}</div>
+        <h4 style={{ margin: 0, color: '#60a5fa', fontSize: '1.15rem', fontWeight: '600' }}>{title}</h4>
+        <div style={{ color: '#a1a1aa', fontSize: '0.85rem', marginTop: '6px' }}>{subtitle}</div>
       </div>
-      <button style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '4px', padding: '4px', color: '#a1a1aa', cursor: 'pointer' }}>
-        <MoreHorizontal size={18} />
+      <button style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '6px', padding: '6px', color: '#a1a1aa', cursor: 'pointer' }}>
+        <MoreHorizontal size={20} />
       </button>
     </div>
-    <div style={{ height: '220px', width: '100%' }}>
+    <div style={{ height: '260px', width: '100%' }}>
       {loading ? (
         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a' }}>Loading API data...</div>
       ) : (

@@ -1,0 +1,174 @@
+.bg-animation-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -2; /* Behind everything and the gradient */
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bg-bubbles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.bg-bubbles li {
+  position: absolute;
+  list-style: none;
+  display: block;
+  width: 40px;
+  height: 40px;
+  background-image: url('/arc-logo.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  bottom: -150px;
+  animation: bg-fly-up 20s linear infinite;
+  opacity: 0.15; /* Make the ARC logo slightly transparent so it doesn't distract */
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
+}
+
+.bg-bubbles li:nth-child(1) {
+  left: 25%;
+  width: 80px;
+  height: 80px;
+  animation-delay: 0s;
+  animation-duration: 15s;
+  opacity: 0.1;
+}
+
+.bg-bubbles li:nth-child(2) {
+  left: 10%;
+  width: 30px;
+  height: 30px;
+  animation-delay: 2s;
+  animation-duration: 12s;
+  opacity: 0.2;
+}
+
+.bg-bubbles li:nth-child(3) {
+  left: 70%;
+  width: 100px;
+  height: 100px;
+  animation-delay: 4s;
+  opacity: 0.08;
+}
+
+.bg-bubbles li:nth-child(4) {
+  left: 40%;
+  width: 60px;
+  height: 60px;
+  animation-delay: 0s;
+  animation-duration: 18s;
+  opacity: 0.12;
+}
+
+.bg-bubbles li:nth-child(5) {
+  left: 65%;
+  width: 35px;
+  height: 35px;
+  animation-delay: 0s;
+  opacity: 0.15;
+}
+
+.bg-bubbles li:nth-child(6) {
+  left: 75%;
+  width: 110px;
+  height: 110px;
+  animation-delay: 3s;
+  opacity: 0.05;
+}
+
+.bg-bubbles li:nth-child(7) {
+  left: 35%;
+  width: 150px;
+  height: 150px;
+  animation-delay: 7s;
+  opacity: 0.04;
+}
+
+.bg-bubbles li:nth-child(8) {
+  left: 50%;
+  width: 25px;
+  height: 25px;
+  animation-delay: 15s;
+  animation-duration: 25s;
+  opacity: 0.25;
+}
+
+.bg-bubbles li:nth-child(9) {
+  left: 20%;
+  width: 20px;
+  height: 20px;
+  animation-delay: 2s;
+  animation-duration: 15s;
+  opacity: 0.18;
+}
+
+.bg-bubbles li:nth-child(10) {
+  left: 85%;
+  width: 70px;
+  height: 70px;
+  animation-delay: 0s;
+  animation-duration: 11s;
+  opacity: 0.1;
+}
+
+.bg-bubbles li:nth-child(11) {
+  left: 15%;
+  width: 40px;
+  height: 40px;
+  animation-delay: 5s;
+  opacity: 0.15;
+}
+
+.bg-bubbles li:nth-child(12) {
+  left: 55%;
+  width: 50px;
+  height: 50px;
+  animation-delay: 8s;
+  animation-duration: 22s;
+  opacity: 0.12;
+}
+
+.bg-bubbles li:nth-child(13) {
+  left: 90%;
+  width: 30px;
+  height: 30px;
+  animation-delay: 1s;
+  animation-duration: 14s;
+  opacity: 0.2;
+}
+
+.bg-bubbles li:nth-child(14) {
+  left: 5%;
+  width: 65px;
+  height: 65px;
+  animation-delay: 6s;
+  opacity: 0.08;
+}
+
+.bg-bubbles li:nth-child(15) {
+  left: 80%;
+  width: 85px;
+  height: 85px;
+  animation-delay: 10s;
+  animation-duration: 20s;
+  opacity: 0.1;
+}
+
+@keyframes bg-fly-up {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-120vh) rotate(720deg);
+  }
+}

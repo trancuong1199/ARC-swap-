@@ -61,7 +61,7 @@ export const Logs: React.FC = () => {
   const [network, setNetwork] = useState<'testnet' | 'mainnet'>('testnet');
 
   return (
-    <div className="page-container animate-fade-in">
+    <div className="page-container animate-fade-in" style={{ maxWidth: '100%' }}>
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div>
           <h2 className="page-title">API Logs</h2>
@@ -139,7 +139,7 @@ export const Logs: React.FC = () => {
             </div>
           </div>
           
-          <div style={{ height: '300px', width: '100%', position: 'relative' }}>
+          <div style={{ height: '400px', width: '100%', position: 'relative' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={mockChartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
@@ -181,31 +181,7 @@ export const Logs: React.FC = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-          <div className="input-group" style={{ flex: '1', minWidth: '250px', marginBottom: 0 }}>
-            <div style={{ position: 'relative' }}>
-              <Search size={16} color="#71717a" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input 
-                type="text" 
-                className="kit-input" 
-                placeholder="Search Logs" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ paddingLeft: '36px' }}
-              />
-            </div>
-          </div>
-          <button className="kit-input" style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'auto', background: 'transparent' }}>
-            <Calendar size={16} color="#71717a" /> Date Range
-          </button>
-          <button className="kit-input" style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'auto', background: 'transparent' }}>
-            All Statuses <ChevronDown size={16} color="#71717a" />
-          </button>
-          <button className="kit-input" style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'auto', background: 'transparent' }}>
-            Method <ChevronDown size={16} color="#71717a" />
-          </button>
-        </div>
+
 
         {/* Requests List */}
         <div style={{ marginTop: '1rem' }}>

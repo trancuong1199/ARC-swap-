@@ -6,9 +6,12 @@ import { Faucet } from './components/Faucet';
 import { Logs } from './components/Logs';
 import { Analytics } from './components/Analytics';
 import { CircleSmartContracts } from './components/CircleSmartContracts';
-import { Activity, Layers, Repeat, Wallet, X } from 'lucide-react';
+import { Payments } from './components/Payments';
+import { FeaturesDoc } from './components/FeaturesDoc';
+import { BackgroundAnimation } from './components/BackgroundAnimation';
+import { Activity, Layers, Repeat, Wallet, X, ChevronDown, BookOpen } from 'lucide-react';
 
-type ViewState = 'swap' | 'logs' | 'analytics' | 'faucet' | 'contracts';
+type ViewState = 'swap' | 'payments' | 'logs' | 'analytics' | 'faucet' | 'contracts' | 'doc';
 
 interface EIP6963ProviderInfo {
   uuid: string;
@@ -24,7 +27,7 @@ interface EIP6963ProviderDetail {
 
 function getInitialView(): ViewState {
   const path = window.location.pathname.replace(/^\//, '');
-  const validViews: ViewState[] = ['swap', 'logs', 'analytics', 'faucet', 'contracts'];
+  const validViews: ViewState[] = ['swap', 'payments', 'logs', 'analytics', 'faucet', 'contracts', 'doc'];
   if (validViews.includes(path as ViewState)) {
     return path as ViewState;
   }
@@ -52,6 +55,7 @@ function App() {
   const [walletProvider, setWalletProvider] = useState<any>(null);
   const [availableWallets, setAvailableWallets] = useState<EIP6963ProviderDetail[]>([]);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [connectedWalletInfo, setConnectedWalletInfo] = useState<EIP6963ProviderDetail['info'] | null>(null);
 
   // EIP-6963: Listen for wallets announcing themselves
   useEffect(() => {
@@ -77,15 +81,16 @@ function App() {
 
   // Auto-connect previously connected wallet
   useEffect(() => {
-    const savedUUID = localStorage.getItem('connectedWalletUUID');
-    if (savedUUID && availableWallets.length > 0 && !walletProvider) {
-      const wallet = availableWallets.find(w => w.info.uuid === savedUUID);
+    const savedRDNS = localStorage.getItem('connectedWalletRDNS');
+    if (savedRDNS && availableWallets.length > 0 && !walletProvider) {
+      const wallet = availableWallets.find(w => w.info.rdns === savedRDNS);
       if (wallet) {
         setWalletProvider(wallet.provider);
         wallet.provider.request({ method: 'eth_accounts' })
           .then((accounts: any) => {
             if (Array.isArray(accounts) && accounts.length > 0) {
               setAddress(accounts[0]);
+              setConnectedWalletInfo(wallet.info);
             }
           }).catch((e: any) => console.log('Auto-connect failed', e));
       }
@@ -95,13 +100,14 @@ function App() {
   // Fallback: Attempt to auto-connect with window.ethereum if EIP-6963 is slow or missing
   useEffect(() => {
     const attemptAutoConnect = async () => {
-      if (localStorage.getItem('connectedWalletUUID')) return; // Prioritize EIP-6963
+      if (localStorage.getItem('connectedWalletRDNS')) return; // Prioritize EIP-6963
       try {
         const eth = (window as any).ethereum;
         if (eth && !walletProvider) {
           const accounts = await eth.request({ method: 'eth_accounts' });
           if (Array.isArray(accounts) && accounts.length > 0) {
             setAddress(accounts[0]);
+            setWalletProvider(eth);
           }
         }
       } catch (err) { }
@@ -134,7 +140,8 @@ function App() {
         if (Array.isArray(accounts) && accounts.length > 0) {
           setAddress(accounts[0]);
           setWalletProvider(providerDetail.provider);
-          localStorage.setItem('connectedWalletUUID', providerDetail.info.uuid);
+          setConnectedWalletInfo(providerDetail.info);
+          localStorage.setItem('connectedWalletRDNS', providerDetail.info.rdns);
           setShowWalletModal(false);
         }
       } catch (err: any) {
@@ -162,6 +169,12 @@ function App() {
       if (Array.isArray(accounts) && accounts.length > 0) {
         setAddress(accounts[0]);
         setWalletProvider(fallbackProvider);
+        setConnectedWalletInfo({
+          uuid: 'fallback',
+          name: 'MetaMask',
+          icon: 'https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg',
+          rdns: 'io.metamask'
+        });
       }
     } catch (err: any) {
       console.error('Fallback connect error:', err);
@@ -170,8 +183,10 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      <nav className="navbar animate-fade-in">
+    <>
+      <BackgroundAnimation />
+      <div className="app-container">
+      <aside className="sidebar animate-fade-in">
         <div className="nav-brand" onClick={() => navigateTo('swap')} style={{ cursor: 'pointer' }}>
           <Activity color="#3b82f6" />
           ARC Finance Studio
@@ -183,6 +198,12 @@ function App() {
             onClick={() => navigateTo('swap')}
           >
             Swap
+          </a>
+          <a
+            className={`nav-link ${currentView === 'payments' ? 'active' : ''}`}
+            onClick={() => navigateTo('payments')}
+          >
+            Payments
           </a>
           <a
             className={`nav-link ${currentView === 'logs' ? 'active' : ''}`}
@@ -208,20 +229,39 @@ function App() {
           >
             Contracts
           </a>
+          <a
+            className={`nav-link ${currentView === 'doc' ? 'active' : ''}`}
+            onClick={() => navigateTo('doc')}
+          >
+            Docs
+          </a>
         </div>
 
         <div className="header-controls">
-          <div className="status-pulse">
+          <div className="status-pulse" style={{ borderRadius: '24px', cursor: 'default', width: 'fit-content' }}>
             <div className="pulse-dot"></div>
             Arc Testnet
           </div>
-          <button onClick={() => connectWallet()} className="wallet-button">
-            <Wallet size={16} />
-            {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect Wallet'}
+
+          <button onClick={() => connectWallet()} className="wallet-button" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '24px', width: 'fit-content' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              {connectedWalletInfo ? (
+                <img src={connectedWalletInfo.icon} alt={connectedWalletInfo.name} style={{ width: 24, height: 24, borderRadius: '50%' }} />
+              ) : (
+                <Wallet size={24} color="var(--text-secondary)" />
+              )}
+            </div>
+            
+            <span style={{ fontSize: '14px', fontWeight: 600, margin: '0 2px' }}>
+              {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect Wallet'}
+            </span>
+            
+            <ChevronDown size={16} color="var(--text-secondary)" />
           </button>
         </div>
-      </nav>
+      </aside>
 
+      <div className="main-content-area">
       {currentView === 'swap' && (
         <main className="main-grid">
           <NetworkStats connectedAccount={address} />
@@ -253,6 +293,12 @@ function App() {
         </main>
       )}
 
+      {currentView === 'payments' && (
+        <main className="page-view">
+          <Payments walletProvider={walletProvider} address={address} />
+        </main>
+      )}
+
       {currentView === 'logs' && (
         <main className="page-view">
           <Logs />
@@ -274,6 +320,12 @@ function App() {
       {currentView === 'contracts' && (
         <main className="page-view">
           <CircleSmartContracts />
+        </main>
+      )}
+
+      {currentView === 'doc' && (
+        <main className="page-view">
+          <FeaturesDoc />
         </main>
       )}
 
@@ -304,7 +356,9 @@ function App() {
           </div>
         </div>
       )}
+      </div>
     </div>
+    </>
   );
 }
 

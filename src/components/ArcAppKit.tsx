@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { ArrowUpDown } from 'lucide-react';
 import { AgenticJobs } from './AgenticJobs';
 import { CircleIntegration } from './CircleIntegration';
+import { BridgeKit } from '@circle-fin/bridge-kit';
+import { createViemAdapterFromProvider } from '@circle-fin/adapter-viem-v2';
+import { saveTransaction } from '../lib/TransactionHistory';
 const ARC_CHAIN_ID = '0x4CEF52'; // 5042002 in hex
 const ARC_CHAIN_PARAMS = {
   chainId: ARC_CHAIN_ID,
@@ -22,6 +26,7 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
   const [swapAmount, setSwapAmount] = useState('1.00');
   const [recipient, setRecipient] = useState('');
   const [statusMsg, setStatusMsg] = useState<string>('');
+  const [isReversed, setIsReversed] = useState(false);
 
   const handleAction = async () => {
     setResult(null);
@@ -61,38 +66,137 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
         }
       }
 
-      // Step 2: Send transaction
-      setStatusMsg('📤 Please confirm the transaction in MetaMask...');
-      
-      const finalRecipient = recipient.trim() || from;
-      let valueHex = '0x0';
-      if (swapAmount && !isNaN(Number(swapAmount))) {
-        const amountWei = BigInt(Math.floor(Number(swapAmount) * 1e18));
-        valueHex = '0x' + amountWei.toString(16);
-      }
+      // Check if this is a Swap or a Bridge action
+      if (activeTab === 'swap') {
+        // --- SWAP LOGIC (NATIVE TRANSFER FOR NOW) ---
+        setStatusMsg('📤 Please confirm the Swap transaction in your wallet...');
 
-      const txHash = await eth.request({
-        method: 'eth_sendTransaction',
-        params: [{
+        const finalRecipient = recipient.trim() || from;
+        let valueHex = '0x0';
+        if (swapAmount && !isNaN(Number(swapAmount))) {
+          const amountWei = BigInt(Math.floor(Number(swapAmount) * 1e18));
+          valueHex = '0x' + amountWei.toString(16);
+        }
+
+        const txHash = await eth.request({
+          method: 'eth_sendTransaction',
+          params: [{
+            from,
+            to: finalRecipient,
+            value: valueHex,
+            data: '0x',
+          }],
+        });
+
+        setStatusMsg('✅ Swap Transaction submitted!');
+        const swapResult = {
+          status: 'SUCCESS',
+          action: 'Swap (Arc Testnet)',
+          transactionHash: txHash,
           from,
           to: finalRecipient,
-          value: valueHex,
-          data: '0x',
-        }],
-      });
+          value: `${swapAmount} ${isReversed ? 'EURC' : 'USDC'}`,
+          explorerUrl: `https://testnet.arcscan.app/tx/${txHash}`,
+        };
 
-      setStatusMsg('✅ Transaction submitted!');
-      setResult(JSON.stringify({
-        status: 'SUCCESS',
-        action: activeTab === 'swap' ? 'Swap (Arc Testnet)' : 'Bridge (CCTP)',
-        transactionHash: txHash,
-        from,
-        to: finalRecipient,
-        value: `${swapAmount} USDC`,
-        explorerUrl: `https://testnet.arcscan.app/tx/${txHash}`,
-      }, null, 2));
+        setResult(JSON.stringify(swapResult, null, 2));
 
-      // Notify other components that a swap occurred
+        // Save to history
+        saveTransaction({
+          id: `tx-${Date.now()}`,
+          action: 'Swap',
+          amount: swapAmount,
+          from,
+          to: finalRecipient,
+          txHash,
+          status: 'COMPLETE',
+          explorerUrl: swapResult.explorerUrl,
+          timestamp: Date.now()
+        });
+
+      } else if (activeTab === 'bridge') {
+        // --- CCTP BRIDGE LOGIC ---
+        setStatusMsg('🔄 Initializing Bridge Kit...');
+        const kit = new BridgeKit();
+
+        // Ensure viem adapter connects to user's injected provider (EIP-1193)
+        const adapter = await createViemAdapterFromProvider(eth);
+
+        const finalRecipient = recipient.trim() || from;
+
+        setStatusMsg('📤 Estimating & Preparing Bridge Transaction...');
+        // Bridge Kit expects amount in decimal format (e.g. "1.50")
+        const amountString = Number(swapAmount).toFixed(2);
+
+        // Execute bridge transfer with automatic forwarding
+        // Note: from chain is Arc_Testnet, to chain is Ethereum_Sepolia (default destination in this UI)
+        try {
+          const resultObj = await kit.bridge({
+            from: {
+              adapter,
+              chain: 'Arc_Testnet'
+            },
+            to: {
+              adapter,
+              chain: 'Ethereum_Sepolia',
+              recipientAddress: finalRecipient,
+              useForwarder: true // Enable Circle Forwarding Service for automatic attestation and minting
+            },
+            amount: amountString,
+            config: {
+              transferSpeed: 'FAST'
+            }
+          });
+
+          setStatusMsg('✅ Bridge Transaction executed successfully!');
+
+          let txHash = '';
+          if (resultObj.steps && Array.isArray(resultObj.steps)) {
+            const burnStep = resultObj.steps.find((s: any) => s.name === 'burn');
+            if (burnStep?.txHash) {
+              txHash = burnStep.txHash;
+            }
+          }
+
+          const bridgeResult = {
+            status: resultObj.state === 'success' ? 'COMPLETE' : 'PENDING',
+            action: 'Bridge (CCTP)',
+            transactionHash: txHash,
+            from,
+            to: finalRecipient,
+            value: `${swapAmount} USDC`,
+            explorerUrl: `https://testnet.arcscan.app/tx/${txHash}`,
+            bridgeDetails: resultObj
+          };
+
+          setResult(JSON.stringify(bridgeResult, null, 2));
+
+          // Save to history
+          saveTransaction({
+            id: `tx-${Date.now()}`,
+            action: 'Bridge (CCTP)',
+            amount: swapAmount,
+            from,
+            to: finalRecipient,
+            txHash,
+            status: resultObj.state === 'success' ? 'COMPLETE' : 'PENDING',
+            explorerUrl: bridgeResult.explorerUrl,
+            timestamp: Date.now()
+          });
+
+        } catch (bridgeErr: any) {
+          console.error("Bridge Kit error:", bridgeErr);
+
+          let errorReason = bridgeErr.message;
+          if (bridgeErr.code === 9002 || bridgeErr.type === 'BALANCE') {
+            errorReason = "Insufficient native gas token (USDC) on Arc Testnet.";
+          }
+
+          throw new Error(errorReason);
+        }
+      }
+
+      // Notify other components
       window.dispatchEvent(new Event('swap_executed'));
     } catch (err: any) {
       console.error('Transaction error:', err);
@@ -139,89 +243,103 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
           <CircleIntegration connectedAccount={connectedAccount} getProvider={getProvider} />
         ) : (
           <>
-        {/* Wallet indicator — read-only, controlled from header */}
-        <div className="wallet-status-bar">
-          {connectedAccount ? (
-            <span className="wallet-connected">
-              🟢 {connectedAccount.slice(0, 6)}...{connectedAccount.slice(-4)}
-            </span>
-          ) : (
-            <span style={{ color: '#f87171', fontSize: '0.8rem' }}>
-              ⚠️ Wallet not connected — use the button in the top-right corner
-            </span>
-          )}
-        </div>
+            {/* Wallet indicator — read-only, controlled from header */}
+            <div className="wallet-status-bar">
+              {connectedAccount ? (
+                <span className="wallet-connected">
+                  🟢 {connectedAccount.slice(0, 6)}...{connectedAccount.slice(-4)}
+                </span>
+              ) : (
+                <span style={{ color: '#f87171', fontSize: '0.8rem' }}>
+                  ⚠️ Wallet not connected — use the button in the top-right corner
+                </span>
+              )}
+            </div>
 
-        <div className="input-group">
-          <label className="input-label">Amount (USDC)</label>
-          <input
-            type="number"
-            value={swapAmount}
-            onChange={(e) => setSwapAmount(e.target.value)}
-            className="kit-input"
-          />
-        </div>
+            <div className="input-group">
+              <label className="input-label">
+                Amount ({activeTab === 'swap' ? (isReversed ? 'EURC' : 'USDC') : 'USDC'})
+              </label>
+              <input
+                type="number"
+                value={swapAmount}
+                onChange={(e) => setSwapAmount(e.target.value)}
+                className="kit-input"
+              />
+            </div>
 
-        <div className="input-group">
-          <label className="input-label">Recipient Address (Optional)</label>
-          <input
-            type="text"
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            placeholder="0x... (Leave empty to send to yourself)"
-            className="kit-input"
-          />
-        </div>
+            {activeTab === 'swap' && (
+              <button 
+                onClick={() => setIsReversed(!isReversed)}
+                className="swap-switch-btn"
+                title="Switch direction"
+              >
+                <ArrowUpDown size={20} />
+              </button>
+            )}
 
-        <div className="input-group">
-          <label className="input-label">
-            {activeTab === 'swap' ? 'To Token' : 'To Chain'}
-          </label>
-          <div className="kit-display">
-            {activeTab === 'swap' ? 'EURC' : 'Ethereum Sepolia'}
-          </div>
-        </div>
+            <div className="input-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label className="input-label" style={{ marginBottom: 0 }}>
+                  {activeTab === 'swap' ? 'To Token' : 'To Chain'}
+                </label>
+              </div>
+              <div className="kit-display">
+                {activeTab === 'swap' ? (isReversed ? 'USDC' : 'EURC') : 'Ethereum Sepolia'}
+              </div>
+            </div>
 
-        {statusMsg && (
-          <div className="status-message">{statusMsg}</div>
-        )}
+            <div className="input-group" style={{ marginTop: '1rem' }}>
+              <label className="input-label">Recipient Address (Optional)</label>
+              <input
+                type="text"
+                value={recipient}
+                onChange={(e) => setRecipient(e.target.value)}
+                placeholder="0x... (Leave empty to send to yourself)"
+                className="kit-input"
+              />
+            </div>
 
-        <button
-          onClick={handleAction}
-          disabled={isProcessing || !connectedAccount}
-          className="kit-action-btn"
-        >
-          {isProcessing
-            ? 'Processing...'
-            : connectedAccount
-              ? (activeTab === 'swap' ? 'Execute Swap' : 'Execute Bridge')
-              : 'Connect Wallet First'}
-        </button>
+            {statusMsg && (
+              <div className="status-message">{statusMsg}</div>
+            )}
 
-        {result && (
-          <div className="kit-result">
-            <pre>{result}</pre>
-            {(() => {
-              try {
-                const parsed = JSON.parse(result);
-                if (parsed.explorerUrl) {
-                  return (
-                    <a
-                      href={parsed.explorerUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="explorer-link"
-                    >
-                      🔍 View on ArcScan
-                    </a>
-                  );
-                }
-              } catch { }
-              return null;
-            })()}
-          </div>
-        )}
-        </>
+            <button
+              onClick={handleAction}
+              disabled={isProcessing || !connectedAccount}
+              className="kit-action-btn"
+            >
+              {isProcessing
+                ? 'Processing...'
+                : connectedAccount
+                  ? (activeTab === 'swap' ? 'Execute Swap' : 'Execute Bridge')
+                  : 'Connect Wallet First'}
+            </button>
+
+            {result && (
+              <div className="kit-result">
+                <pre>{result}</pre>
+                {(() => {
+                  try {
+                    const parsed = JSON.parse(result);
+                    if (parsed.explorerUrl) {
+                      return (
+                        <a
+                          href={parsed.explorerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="explorer-link"
+                        >
+                          🔍 View on ArcScan
+                        </a>
+                      );
+                    }
+                  } catch { }
+                  return null;
+                })()}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

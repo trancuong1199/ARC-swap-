@@ -15,7 +15,7 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ connectedAccount }) 
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     if (!connectedAccount) {
@@ -26,15 +26,44 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ connectedAccount }) 
     const fetchTxs = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`https://testnet.arcscan.app/api?module=account&action=txlist&address=${connectedAccount}&sort=desc&page=${page}&offset=${ITEMS_PER_PAGE}`);
-        const data = await res.json();
-        if (data && data.result && Array.isArray(data.result)) {
-          setTransactions(data.result);
-        } else {
-          setTransactions([]); // End of pages
+        const { getTransactionHistory } = await import('../lib/TransactionHistory');
+        const history = getTransactionHistory();
+        const localUserTxs = history.filter(tx => tx.from.toLowerCase() === connectedAccount.toLowerCase() || tx.to.toLowerCase() === connectedAccount.toLowerCase());
+
+        let arcscanTxs: any[] = [];
+        try {
+          const res = await fetch(`https://testnet.arcscan.app/api?module=account&action=txlist&address=${connectedAccount}&sort=desc&page=${page}&offset=${ITEMS_PER_PAGE}`);
+          const data = await res.json();
+          if (data && data.result && Array.isArray(data.result)) {
+            arcscanTxs = data.result.map((tx: any) => ({
+              id: tx.hash,
+              action: tx.functionName ? tx.functionName.split('(')[0] : (tx.value === '0' ? 'Contract Call' : 'Transfer'),
+              amount: (Number(tx.value) / 1e18).toFixed(4).replace(/\.?0+$/, ''),
+              from: tx.from,
+              to: tx.to,
+              txHash: tx.hash,
+              status: tx.isError === "1" ? "FAILED" : "COMPLETE",
+              explorerUrl: `https://testnet.arcscan.app/tx/${tx.hash}`,
+              timestamp: parseInt(tx.timeStamp) * 1000
+            }));
+          }
+        } catch (e) {
+          console.warn('Arcscan fetch failed', e);
         }
+
+        const merged = [...localUserTxs];
+        for (const tx of arcscanTxs) {
+          if (!merged.find(m => m.txHash && m.txHash.toLowerCase() === tx.txHash.toLowerCase())) {
+            merged.push(tx);
+          }
+        }
+        
+        merged.sort((a, b) => b.timestamp - a.timestamp);
+        
+        const displayTxs = page === 1 ? merged.slice(0, ITEMS_PER_PAGE) : arcscanTxs;
+        setTransactions(displayTxs);
       } catch (err) {
-        console.error("Error fetching txs", err);
+        console.error("Error loading txs", err);
       } finally {
         setLoading(false);
       }
@@ -42,21 +71,16 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ connectedAccount }) 
 
     fetchTxs();
     
-    // Listen for manual swap trigger
-    const handleSwapExecuted = () => {
-      // Poll multiple times to ensure we catch the Arcscan indexing delay
-      setTimeout(fetchTxs, 2000);
-      setTimeout(fetchTxs, 5000);
-      setTimeout(fetchTxs, 10000);
+    // Listen for manual swap trigger and history updates
+    const handleTxUpdated = () => {
+      fetchTxs();
     };
-    window.addEventListener('swap_executed', handleSwapExecuted);
-    
-    // Auto-refresh every 10 seconds for the current page
-    const interval = setInterval(fetchTxs, 10000);
+    window.addEventListener('swap_executed', handleTxUpdated);
+    window.addEventListener('transaction_history_updated', handleTxUpdated);
     
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('swap_executed', handleSwapExecuted);
+      window.removeEventListener('swap_executed', handleTxUpdated);
+      window.removeEventListener('transaction_history_updated', handleTxUpdated);
     };
   }, [connectedAccount, page]);
 
@@ -124,23 +148,24 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ connectedAccount }) 
             <div style={{ padding: '2rem 1rem', color: '#A0A2A4', textAlign: 'center' }}>No transactions found on this page.</div>
           ) : (
             transactions.map((tx: any) => {
-              const isError = tx.isError === "1";
-              const timeStr = new Date(parseInt(tx.timeStamp) * 1000).toLocaleString();
+              const isError = tx.status === "FAILED";
+              const isPending = tx.status === "PENDING";
+              const timeStr = new Date(tx.timestamp).toLocaleString();
               return (
                 <div 
-                  key={tx.hash} 
+                  key={tx.id} 
                   className="swap-item" 
                   style={{ opacity: isError ? 0.6 : 1 }}
-                  onClick={() => window.open(`https://testnet.arcscan.app/tx/${tx.hash}`, '_blank')}
+                  onClick={() => tx.explorerUrl && window.open(tx.explorerUrl, '_blank')}
                 >
                   <div className="swap-info" style={{ overflow: 'hidden' }}>
                     <div className="swap-route" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      Tx: {tx.hash.slice(0, 15)}...
+                      {tx.action}: {tx.amount} USDC
                     </div>
                     <div className="swap-time">{timeStr}</div>
                   </div>
-                  <div className="swap-amount" style={{ color: isError ? '#ef4444' : '#10b981', fontSize: '0.85rem', fontWeight: 600 }}>
-                    {isError ? 'Failed' : 'Success'}
+                  <div className="swap-amount" style={{ color: isError ? '#ef4444' : isPending ? '#eab308' : '#10b981', fontSize: '0.85rem', fontWeight: 600 }}>
+                    {isError ? 'Failed' : isPending ? 'Pending...' : 'Success'}
                   </div>
                 </div>
               );
