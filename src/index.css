@@ -688,6 +688,23 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-secondary);
 }
 
+/* Custom Filter Hover Effects */
+.filter-dropdown-item {
+  transition: all 0.2s ease;
+}
+.filter-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+}
+
+.time-filter-btn {
+  transition: all 0.2s ease;
+}
+.time-filter-btn:hover:not(.active) {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 /* =========================================
    RESPONSIVE DESIGN (TABLET & MOBILE) 
    ========================================= */

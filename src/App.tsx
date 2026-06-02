@@ -3,12 +3,12 @@ import { SwapWidget } from './components/SwapWidget';
 import { NetworkStats } from './components/NetworkStats';
 import { ArcAppKit } from './components/ArcAppKit';
 import { Faucet } from './components/Faucet';
-import { Pools } from './components/Pools';
+import { Logs } from './components/Logs';
 import { Analytics } from './components/Analytics';
 import { CircleSmartContracts } from './components/CircleSmartContracts';
 import { Activity, Layers, Repeat, Wallet } from 'lucide-react';
 
-type ViewState = 'swap' | 'pools' | 'analytics' | 'faucet' | 'contracts';
+type ViewState = 'swap' | 'logs' | 'analytics' | 'faucet' | 'contracts';
 
 interface EIP6963ProviderInfo {
   uuid: string;
@@ -22,8 +22,31 @@ interface EIP6963ProviderDetail {
   provider: any;
 }
 
+function getInitialView(): ViewState {
+  const path = window.location.pathname.replace(/^\//, '');
+  const validViews: ViewState[] = ['swap', 'logs', 'analytics', 'faucet', 'contracts'];
+  if (validViews.includes(path as ViewState)) {
+    return path as ViewState;
+  }
+  return 'swap';
+}
+
 function App() {
-  const [currentView, setCurrentView] = useState<ViewState>('swap');
+  const [currentView, setCurrentView] = useState<ViewState>(getInitialView);
+
+  // Listen for browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentView(getInitialView());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (view: ViewState) => {
+    setCurrentView(view);
+    window.history.pushState({}, '', `/${view === 'swap' ? '' : view}`);
+  };
   const [activeWidget, setActiveWidget] = useState<'lifi' | 'native'>('native');
   const [address, setAddress] = useState<string | null>(null);
   const [walletProvider, setWalletProvider] = useState<any>(null);
@@ -44,14 +67,14 @@ function App() {
         if (detail.info.rdns === 'io.metamask' || detail.info.name.toLowerCase().includes('metamask')) {
           console.log('Auto-selecting MetaMask provider');
           setWalletProvider(detail.provider);
-          
+
           // Auto-connect if previously connected
           try {
             const accounts = await detail.provider.request({ method: 'eth_accounts' });
             if (Array.isArray(accounts) && accounts.length > 0) {
               setAddress(accounts[0]);
             }
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     };
@@ -75,7 +98,7 @@ function App() {
             setAddress(accounts[0]);
           }
         }
-      } catch (err) {}
+      } catch (err) { }
     };
     // Delay slightly to give EIP-6963 precedence
     setTimeout(attemptAutoConnect, 500);
@@ -128,7 +151,7 @@ function App() {
   return (
     <div className="app-container">
       <nav className="navbar animate-fade-in">
-        <div className="nav-brand" onClick={() => setCurrentView('swap')} style={{ cursor: 'pointer' }}>
+        <div className="nav-brand" onClick={() => navigateTo('swap')} style={{ cursor: 'pointer' }}>
           <Activity color="#3b82f6" />
           ARC Finance Studio
         </div>
@@ -136,31 +159,31 @@ function App() {
         <div className="nav-links">
           <a
             className={`nav-link ${currentView === 'swap' ? 'active' : ''}`}
-            onClick={() => setCurrentView('swap')}
+            onClick={() => navigateTo('swap')}
           >
             Swap
           </a>
           <a
-            className={`nav-link ${currentView === 'pools' ? 'active' : ''}`}
-            onClick={() => setCurrentView('pools')}
+            className={`nav-link ${currentView === 'logs' ? 'active' : ''}`}
+            onClick={() => navigateTo('logs')}
           >
-            Pools
+            API Logs
           </a>
           <a
             className={`nav-link ${currentView === 'analytics' ? 'active' : ''}`}
-            onClick={() => setCurrentView('analytics')}
+            onClick={() => navigateTo('analytics')}
           >
             Analytics
           </a>
           <a
             className={`nav-link ${currentView === 'faucet' ? 'active' : ''}`}
-            onClick={() => setCurrentView('faucet')}
+            onClick={() => navigateTo('faucet')}
           >
             Faucet
           </a>
           <a
             className={`nav-link ${currentView === 'contracts' ? 'active' : ''}`}
-            onClick={() => setCurrentView('contracts')}
+            onClick={() => navigateTo('contracts')}
           >
             Contracts
           </a>
@@ -209,9 +232,9 @@ function App() {
         </main>
       )}
 
-      {currentView === 'pools' && (
+      {currentView === 'logs' && (
         <main className="page-view">
-          <Pools />
+          <Logs />
         </main>
       )}
 

@@ -10,7 +10,7 @@ export const CircleSmartContracts: React.FC = () => {
   const [deployedContract, setDeployedContract] = useState<string | null>(null);
 
   // Settings state
-  const [showSettings, setShowSettings] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState(import.meta.env.VITE_CIRCLE_API_KEY || '');
   const [walletId, setWalletId] = useState(import.meta.env.VITE_CIRCLE_WALLET_ID || '');
   const [entitySecret, setEntitySecret] = useState(import.meta.env.VITE_CIRCLE_ENTITY_SECRET || '');
