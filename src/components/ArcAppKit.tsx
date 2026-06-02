@@ -20,6 +20,7 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [swapAmount, setSwapAmount] = useState('1.00');
+  const [recipient, setRecipient] = useState('');
   const [statusMsg, setStatusMsg] = useState<string>('');
 
   const handleAction = async () => {
@@ -62,12 +63,20 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
 
       // Step 2: Send transaction
       setStatusMsg('📤 Please confirm the transaction in MetaMask...');
+      
+      const finalRecipient = recipient.trim() || from;
+      let valueHex = '0x0';
+      if (swapAmount && !isNaN(Number(swapAmount))) {
+        const amountWei = BigInt(Math.floor(Number(swapAmount) * 1e18));
+        valueHex = '0x' + amountWei.toString(16);
+      }
+
       const txHash = await eth.request({
         method: 'eth_sendTransaction',
         params: [{
           from,
-          to: from,
-          value: '0x0',
+          to: finalRecipient,
+          value: valueHex,
           data: '0x',
         }],
       });
@@ -78,6 +87,8 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
         action: activeTab === 'swap' ? 'Swap (Arc Testnet)' : 'Bridge (CCTP)',
         transactionHash: txHash,
         from,
+        to: finalRecipient,
+        value: `${swapAmount} USDC`,
         explorerUrl: `https://testnet.arcscan.app/tx/${txHash}`,
       }, null, 2));
 
@@ -147,6 +158,17 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
             type="number"
             value={swapAmount}
             onChange={(e) => setSwapAmount(e.target.value)}
+            className="kit-input"
+          />
+        </div>
+
+        <div className="input-group">
+          <label className="input-label">Recipient Address (Optional)</label>
+          <input
+            type="text"
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            placeholder="0x... (Leave empty to send to yourself)"
             className="kit-input"
           />
         </div>
