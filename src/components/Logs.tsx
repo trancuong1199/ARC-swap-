@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Search, Calendar, ChevronDown, Filter } from 'lucide-react';
+import { ChevronDown, Filter } from 'lucide-react';
 
 const mockChartData = [
   { time: '08:00', errorCount: 0, successRate: 100 },
@@ -57,7 +57,7 @@ const mockRequests = [
 ];
 
 export const Logs: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+
   const [network, setNetwork] = useState<'testnet' | 'mainnet'>('testnet');
 
   return (

@@ -1,4 +1,4 @@
-import { Activity, Layers, Repeat, Wallet, Droplets, FileCode2, BarChart3, Receipt, ExternalLink } from 'lucide-react';
+import { Activity, Layers, Wallet, Droplets, FileCode2, BarChart3, Receipt, ExternalLink } from 'lucide-react';
 import React from 'react';
 
 export const FeaturesDoc: React.FC = () => {

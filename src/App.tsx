@@ -9,7 +9,7 @@ import { CircleSmartContracts } from './components/CircleSmartContracts';
 import { Payments } from './components/Payments';
 import { FeaturesDoc } from './components/FeaturesDoc';
 import { BackgroundAnimation } from './components/BackgroundAnimation';
-import { Activity, Layers, Repeat, Wallet, X, ChevronDown, BookOpen } from 'lucide-react';
+import { Activity, Layers, Repeat, Wallet, X, ChevronDown } from 'lucide-react';
 
 type ViewState = 'swap' | 'payments' | 'logs' | 'analytics' | 'faucet' | 'contracts' | 'doc';
 
@@ -295,7 +295,7 @@ function App() {
 
       {currentView === 'payments' && (
         <main className="page-view">
-          <Payments walletProvider={walletProvider} address={address} />
+          <Payments walletProvider={walletProvider} address={address || ''} />
         </main>
       )}
 
