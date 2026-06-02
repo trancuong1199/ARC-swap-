@@ -5,9 +5,10 @@ import { ArcAppKit } from './components/ArcAppKit';
 import { Faucet } from './components/Faucet';
 import { Pools } from './components/Pools';
 import { Analytics } from './components/Analytics';
+import { CircleSmartContracts } from './components/CircleSmartContracts';
 import { Activity, Layers, Repeat, Wallet } from 'lucide-react';
 
-type ViewState = 'swap' | 'pools' | 'analytics' | 'faucet';
+type ViewState = 'swap' | 'pools' | 'analytics' | 'faucet' | 'contracts';
 
 interface EIP6963ProviderInfo {
   uuid: string;
@@ -157,6 +158,12 @@ function App() {
           >
             Faucet
           </a>
+          <a
+            className={`nav-link ${currentView === 'contracts' ? 'active' : ''}`}
+            onClick={() => setCurrentView('contracts')}
+          >
+            Contracts
+          </a>
         </div>
 
         <div className="header-controls">
@@ -217,6 +224,12 @@ function App() {
       {currentView === 'faucet' && (
         <main className="page-view">
           <Faucet connectedAccount={address} />
+        </main>
+      )}
+
+      {currentView === 'contracts' && (
+        <main className="page-view">
+          <CircleSmartContracts />
         </main>
       )}
     </div>
