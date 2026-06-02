@@ -6,7 +6,7 @@ import { Faucet } from './components/Faucet';
 import { Logs } from './components/Logs';
 import { Analytics } from './components/Analytics';
 import { CircleSmartContracts } from './components/CircleSmartContracts';
-import { Activity, Layers, Repeat, Wallet } from 'lucide-react';
+import { Activity, Layers, Repeat, Wallet, X } from 'lucide-react';
 
 type ViewState = 'swap' | 'logs' | 'analytics' | 'faucet' | 'contracts';
 
@@ -50,33 +50,21 @@ function App() {
   const [activeWidget, setActiveWidget] = useState<'lifi' | 'native'>('native');
   const [address, setAddress] = useState<string | null>(null);
   const [walletProvider, setWalletProvider] = useState<any>(null);
-  // const [availableWallets, setAvailableWallets] = useState<EIP6963ProviderDetail[]>([]);
+  const [availableWallets, setAvailableWallets] = useState<EIP6963ProviderDetail[]>([]);
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   // EIP-6963: Listen for wallets announcing themselves
   useEffect(() => {
-    const discovered: EIP6963ProviderDetail[] = [];
-
-    const handleAnnounce = async (event: any) => {
+    const handleAnnounce = (event: any) => {
       const detail: EIP6963ProviderDetail = event.detail;
-      console.log('Discovered wallet:', detail.info.name, detail.info.rdns);
-      // Avoid duplicates
-      if (!discovered.find(w => w.info.uuid === detail.info.uuid)) {
-        discovered.push(detail);
-
-        // Auto-select MetaMask if found
-        if (detail.info.rdns === 'io.metamask' || detail.info.name.toLowerCase().includes('metamask')) {
-          console.log('Auto-selecting MetaMask provider');
-          setWalletProvider(detail.provider);
-
-          // Auto-connect if previously connected
-          try {
-            const accounts = await detail.provider.request({ method: 'eth_accounts' });
-            if (Array.isArray(accounts) && accounts.length > 0) {
-              setAddress(accounts[0]);
-            }
-          } catch (e) { }
+      console.log('Discovered wallet:', detail.info.name);
+      
+      setAvailableWallets(prev => {
+        if (!prev.find(w => w.info.uuid === detail.info.uuid)) {
+          return [...prev, detail];
         }
-      }
+        return prev;
+      });
     };
 
     window.addEventListener('eip6963:announceProvider', handleAnnounce);
@@ -87,9 +75,27 @@ function App() {
     };
   }, []);
 
+  // Auto-connect previously connected wallet
+  useEffect(() => {
+    const savedUUID = localStorage.getItem('connectedWalletUUID');
+    if (savedUUID && availableWallets.length > 0 && !walletProvider) {
+      const wallet = availableWallets.find(w => w.info.uuid === savedUUID);
+      if (wallet) {
+        setWalletProvider(wallet.provider);
+        wallet.provider.request({ method: 'eth_accounts' })
+          .then((accounts: any) => {
+            if (Array.isArray(accounts) && accounts.length > 0) {
+              setAddress(accounts[0]);
+            }
+          }).catch((e: any) => console.log('Auto-connect failed', e));
+      }
+    }
+  }, [availableWallets, walletProvider]);
+
   // Fallback: Attempt to auto-connect with window.ethereum if EIP-6963 is slow or missing
   useEffect(() => {
     const attemptAutoConnect = async () => {
+      if (localStorage.getItem('connectedWalletUUID')) return; // Prioritize EIP-6963
       try {
         const eth = (window as any).ethereum;
         if (eth && !walletProvider) {
@@ -100,7 +106,6 @@ function App() {
         }
       } catch (err) { }
     };
-    // Delay slightly to give EIP-6963 precedence
     setTimeout(attemptAutoConnect, 500);
   }, [walletProvider]);
 
@@ -121,30 +126,46 @@ function App() {
     return getFallbackProvider();
   }, [walletProvider, getFallbackProvider]);
 
-  const connectWallet = async () => {
-    const provider = getProvider();
-    if (!provider) {
-      alert('No wallet extension found.\n\nPlease install MetaMask from metamask.io and refresh the page.');
+  const connectWallet = async (providerDetail?: EIP6963ProviderDetail) => {
+    if (providerDetail) {
+      // User selected a specific wallet from the Modal
+      try {
+        const accounts = await providerDetail.provider.request({ method: 'eth_requestAccounts' });
+        if (Array.isArray(accounts) && accounts.length > 0) {
+          setAddress(accounts[0]);
+          setWalletProvider(providerDetail.provider);
+          localStorage.setItem('connectedWalletUUID', providerDetail.info.uuid);
+          setShowWalletModal(false);
+        }
+      } catch (err: any) {
+        console.error('Wallet connection failed:', err);
+        alert(`Connection failed: ${err.message || 'Rejected'}`);
+      }
       return;
     }
 
-    console.log('Connecting with provider:', provider);
+    // "Connect Wallet" button clicked
+    if (availableWallets.length > 0) {
+      setShowWalletModal(true);
+      return;
+    }
+
+    // Fallback: no EIP-6963 wallets detected, try window.ethereum
+    const fallbackProvider = getFallbackProvider();
+    if (!fallbackProvider) {
+      alert('No wallet extension found.\n\nPlease install a Web3 Wallet (like OKX, MetaMask, Phantom) and refresh the page.');
+      return;
+    }
+
     try {
-      const accounts = await provider.request({ method: 'eth_requestAccounts' });
-      console.log('Accounts:', accounts);
+      const accounts = await fallbackProvider.request({ method: 'eth_requestAccounts' });
       if (Array.isArray(accounts) && accounts.length > 0) {
         setAddress(accounts[0]);
-      } else {
-        alert('No accounts returned. Please unlock MetaMask first.');
+        setWalletProvider(fallbackProvider);
       }
     } catch (err: any) {
-      console.error('Connect error:', err);
-      if (err.code === 4001) {
-        // User rejected
-        alert('Connection rejected. Please click "Connect Wallet" and approve in MetaMask.');
-      } else {
-        alert(`Connection failed: ${err.message}`);
-      }
+      console.error('Fallback connect error:', err);
+      alert('Connection rejected. Please click "Connect Wallet" and approve in your wallet.');
     }
   };
 
@@ -194,7 +215,7 @@ function App() {
             <div className="pulse-dot"></div>
             Arc Testnet
           </div>
-          <button onClick={connectWallet} className="wallet-button">
+          <button onClick={() => connectWallet()} className="wallet-button">
             <Wallet size={16} />
             {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect Wallet'}
           </button>
@@ -254,6 +275,34 @@ function App() {
         <main className="page-view">
           <CircleSmartContracts />
         </main>
+      )}
+
+      {/* Wallet Selection Modal */}
+      {showWalletModal && (
+        <div className="modal-overlay" onClick={() => setShowWalletModal(false)}>
+          <div className="wallet-modal" onClick={e => e.stopPropagation()}>
+            <div className="wallet-modal-header">
+              <h3 className="wallet-modal-title">Connect a Wallet</h3>
+              <button className="wallet-close-btn" onClick={() => setShowWalletModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="wallet-list">
+              {availableWallets.map(wallet => (
+                <div 
+                  key={wallet.info.uuid} 
+                  className="wallet-item"
+                  onClick={() => connectWallet(wallet)}
+                >
+                  <img src={wallet.info.icon} alt={wallet.info.name} className="wallet-icon" />
+                  <span className="wallet-name">{wallet.info.name}</span>
+                  <span className="wallet-status">Detected</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
