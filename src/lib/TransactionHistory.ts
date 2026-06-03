@@ -8,6 +8,7 @@ export interface Transaction {
   status: 'PENDING' | 'COMPLETE' | 'FAILED';
   explorerUrl?: string;
   timestamp: number;
+  tokenSymbol?: string;
 }
 
 const STORAGE_KEY = 'arc_finance_transactions';

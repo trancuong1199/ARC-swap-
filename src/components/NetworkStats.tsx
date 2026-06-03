@@ -160,7 +160,7 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ connectedAccount }) 
                 >
                   <div className="swap-info" style={{ overflow: 'hidden' }}>
                     <div className="swap-route" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {tx.action}: {tx.amount} USDC
+                      {tx.action}: {tx.amount} {tx.tokenSymbol || 'USDC'}
                     </div>
                     <div className="swap-time" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>{timeStr}</span>

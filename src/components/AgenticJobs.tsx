@@ -16,7 +16,7 @@ const agenticCommerceAbi = [
   "function submit(uint256 jobId, bytes32 deliverable, bytes optParams)",
   "function complete(uint256 jobId, bytes32 reason, bytes optParams)",
   "function getJob(uint256 jobId) view returns (tuple(uint256 id, address client, address provider, address evaluator, string description, uint256 budget, uint256 expiredAt, uint8 status, address hook))",
-  "event JobCreated(uint256 indexed jobId, address indexed client, address indexed provider, address indexed evaluator, uint256 expiredAt, address hook)"
+  "event JobCreated(uint256 indexed jobId, address indexed client, address indexed provider, address evaluator, uint256 expiredAt, address hook)"
 ];
 
 const erc20Abi = [
@@ -37,7 +37,7 @@ export const AgenticJobs: React.FC<AgenticJobsProps> = ({ connectedAccount, getP
   const STATUS_NAMES = ["Open", "Funded", "Submitted", "Completed", "Rejected", "Expired"];
 
   const appendLog = (msg: string) => {
-    setLog(prev => prev + msg + "\\n");
+    setLog(prev => prev + msg + "\n");
   };
 
   const getEthersSigner = async () => {
@@ -110,7 +110,7 @@ export const AgenticJobs: React.FC<AgenticJobsProps> = ({ connectedAccount, getP
       // Let's use the connected wallet. If the connected wallet isn't the provider, this might fail! 
       // For this demo, we'll force providerAddress to be connectedAccount if not specified.
       appendLog("Setting budget...");
-      const budgetUnits = ethers.parseUnits(budget, 18);
+      const budgetUnits = ethers.parseUnits(budget, 6); // USDC uses 6 decimals
       const budgetTx = await contract.setBudget(newJobId, budgetUnits, "0x");
       await budgetTx.wait();
       appendLog("Budget set successfully!");
@@ -132,7 +132,7 @@ export const AgenticJobs: React.FC<AgenticJobsProps> = ({ connectedAccount, getP
       const usdc = new ethers.Contract(USDC_CONTRACT, erc20Abi, signer);
       const agentic = new ethers.Contract(AGENTIC_COMMERCE_CONTRACT, agenticCommerceAbi, signer);
       
-      const budgetUnits = ethers.parseUnits(budget, 18);
+      const budgetUnits = ethers.parseUnits(budget, 6); // USDC uses 6 decimals
 
       appendLog(`Approving ${budget} USDC...`);
       const approveTx = await usdc.approve(AGENTIC_COMMERCE_CONTRACT, budgetUnits);

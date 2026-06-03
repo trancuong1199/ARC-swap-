@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, startTransition } from 'react';
 import { SwapWidget } from './components/SwapWidget';
 import { NetworkStats } from './components/NetworkStats';
 import { ArcAppKit } from './components/ArcAppKit';
@@ -47,7 +47,9 @@ function App() {
   }, []);
 
   const navigateTo = (view: ViewState) => {
-    setCurrentView(view);
+    startTransition(() => {
+      setCurrentView(view);
+    });
     window.history.pushState({}, '', `/${view === 'swap' ? '' : view}`);
   };
   const [activeWidget, setActiveWidget] = useState<'lifi' | 'native'>('native');

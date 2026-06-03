@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Search, ChevronDown, MoreHorizontal, Check } from 'lucide-react';
 
@@ -132,11 +132,11 @@ export const Analytics: React.FC = () => {
   }, []);
 
   // Filter data based on selected time range
-  const filterData = (data: any[]) => {
+  const filterData = (data: any[], range: string) => {
     if (!data || data.length === 0) return [];
     let daysToKeep = data.length; // Default to all
     
-    switch (timeRange) {
+    switch (range) {
       case '1M': daysToKeep = 30; break;
       case '3M': daysToKeep = 90; break;
       case '6M': daysToKeep = 180; break;
@@ -147,28 +147,28 @@ export const Analytics: React.FC = () => {
     return data.slice(Math.max(data.length - daysToKeep, 0));
   };
 
-  const txChartData = filterData(rawTxChartData);
-  const filteredAccountsData = filterData(mockAccountsData);
-  const filteredActiveAccountsData = filterData(mockActiveAccountsData);
-  const filteredNewAccountsData = filterData(mockNewAccountsData);
+  const txChartData = useMemo(() => filterData(rawTxChartData, timeRange), [rawTxChartData, timeRange]);
+  const filteredAccountsData = useMemo(() => filterData(mockAccountsData, timeRange), [timeRange]);
+  const filteredActiveAccountsData = useMemo(() => filterData(mockActiveAccountsData, timeRange), [timeRange]);
+  const filteredNewAccountsData = useMemo(() => filterData(mockNewAccountsData, timeRange), [timeRange]);
   
-  const filteredAvgTxFeeData = filterData(mockAvgTxFeeData);
-  const filteredNewTxData = filterData(mockNewTxData);
-  const filteredTxFeesData = filterData(mockTxFeesData);
-  const filteredTxSuccessData = filterData(mockTxSuccessData);
+  const filteredAvgTxFeeData = useMemo(() => filterData(mockAvgTxFeeData, timeRange), [timeRange]);
+  const filteredNewTxData = useMemo(() => filterData(mockNewTxData, timeRange), [timeRange]);
+  const filteredTxFeesData = useMemo(() => filterData(mockTxFeesData, timeRange), [timeRange]);
+  const filteredTxSuccessData = useMemo(() => filterData(mockTxSuccessData, timeRange), [timeRange]);
 
-  const filteredBlockSizeData = filterData(mockBlockSizeData);
-  const filteredBlockTimeData = filterData(mockBlockTimeData);
+  const filteredBlockSizeData = useMemo(() => filterData(mockBlockSizeData, timeRange), [timeRange]);
+  const filteredBlockTimeData = useMemo(() => filterData(mockBlockTimeData, timeRange), [timeRange]);
   
-  const filteredTokenTransfersData = filterData(mockTokenTransfersData);
+  const filteredTokenTransfersData = useMemo(() => filterData(mockTokenTransfersData, timeRange), [timeRange]);
   
-  const filteredGasUsedData = filterData(mockGasUsedData);
-  const filteredGasPriceData = filterData(mockGasPriceData);
+  const filteredGasUsedData = useMemo(() => filterData(mockGasUsedData, timeRange), [timeRange]);
+  const filteredGasPriceData = useMemo(() => filterData(mockGasPriceData, timeRange), [timeRange]);
   
-  const filteredNewContractsData = filterData(mockNewContractsData);
-  const filteredVerifiedContractsData = filterData(mockVerifiedContractsData);
+  const filteredNewContractsData = useMemo(() => filterData(mockNewContractsData, timeRange), [timeRange]);
+  const filteredVerifiedContractsData = useMemo(() => filterData(mockVerifiedContractsData, timeRange), [timeRange]);
   
-  const filteredUserOpsData = filterData(mockUserOpsData);
+  const filteredUserOpsData = useMemo(() => filterData(mockUserOpsData, timeRange), [timeRange]);
 
   return (
     <div className="page-container animate-fade-in" style={{ maxWidth: '100%', paddingBottom: '4rem' }}>
@@ -425,56 +425,68 @@ const StatCard = ({ title, value }: { title: string, value: string }) => (
 );
 
 // Reusable Chart Component
-const ChartCard = ({ title, subtitle, data, unit, loading = false, formatter = formatNumber }: any) => (
-  <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-      <div>
-        <h4 style={{ margin: 0, color: '#60a5fa', fontSize: '1.15rem', fontWeight: '600' }}>{title}</h4>
-        <div style={{ color: '#a1a1aa', fontSize: '0.85rem', marginTop: '6px' }}>{subtitle}</div>
+const ChartCard = React.memo(({ title, subtitle, data, unit, loading = false, formatter = formatNumber }: any) => {
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    // Stagger rendering slightly based on random or just simple delay to prevent main thread blocking
+    const t = setTimeout(() => setIsMounted(true), 50 + Math.random() * 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  const showLoading = loading || !isMounted;
+
+  return (
+    <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+        <div>
+          <h4 style={{ margin: 0, color: '#60a5fa', fontSize: '1.15rem', fontWeight: '600' }}>{title}</h4>
+          <div style={{ color: '#a1a1aa', fontSize: '0.85rem', marginTop: '6px' }}>{subtitle}</div>
+        </div>
+        <button style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '6px', padding: '6px', color: '#a1a1aa', cursor: 'pointer' }}>
+          <MoreHorizontal size={20} />
+        </button>
       </div>
-      <button style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '6px', padding: '6px', color: '#a1a1aa', cursor: 'pointer' }}>
-        <MoreHorizontal size={20} />
-      </button>
+      <div style={{ height: '260px', width: '100%' }}>
+        {showLoading ? (
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a' }}>Loading chart...</div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id={`color-${title.replace(/\s+/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+              <XAxis 
+                dataKey="date" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#71717a', fontSize: 11 }} 
+                dy={10} 
+                minTickGap={30} 
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#71717a', fontSize: 11 }} 
+                tickFormatter={(val) => formatter(val)} 
+                dx={-10} 
+                width={45} 
+              />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#fff' }}
+                itemStyle={{ color: '#60a5fa' }}
+                labelStyle={{ color: '#a1a1aa', marginBottom: '8px' }}
+                formatter={(value: any) => [formatter(value), unit]}
+              />
+              <Area type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={2} fillOpacity={1} fill={`url(#color-${title.replace(/\s+/g, '')})`} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
     </div>
-    <div style={{ height: '260px', width: '100%' }}>
-      {loading ? (
-        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a' }}>Loading API data...</div>
-      ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id={`color-${title.replace(/\s+/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-            <XAxis 
-              dataKey="date" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#71717a', fontSize: 11 }} 
-              dy={10} 
-              minTickGap={30} 
-            />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#71717a', fontSize: 11 }} 
-              tickFormatter={(val) => formatter(val)} 
-              dx={-10} 
-              width={45} 
-            />
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#fff' }}
-              itemStyle={{ color: '#60a5fa' }}
-              labelStyle={{ color: '#a1a1aa', marginBottom: '8px' }}
-              formatter={(value: any) => [formatter(value), unit]}
-            />
-            <Area type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={2} fillOpacity={1} fill={`url(#color-${title.replace(/\s+/g, '')})`} />
-          </AreaChart>
-        </ResponsiveContainer>
-      )}
-    </div>
-  </div>
-);
+  );
+});

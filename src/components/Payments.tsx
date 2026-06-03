@@ -72,7 +72,8 @@ export const Payments: React.FC<PaymentsProps> = ({ walletProvider, address }) =
           txHash: receipt.hash,
           status: 'COMPLETE',
           explorerUrl: `https://testnet.arcscan.app/tx/${receipt.hash}`,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          tokenSymbol: 'USDC'
         });
       }
     } catch (err: any) {
@@ -87,7 +88,8 @@ export const Payments: React.FC<PaymentsProps> = ({ walletProvider, address }) =
         to: recipient,
         txHash: '',
         status: 'FAILED',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        tokenSymbol: 'USDC'
       });
     } finally {
       setIsSending(false);

@@ -1,0 +1,891 @@
+Create your first ERC-8183 job - Arc Docs                                                    Skip to main content              Arc Docs  home page                 Search...   ⌘ K          Ask Assistant        Faucet    Block explorer                                            Search...                      Navigation         Quickstarts       Create your first ERC-8183 job       Home    Arc Network    Integrate    Build    App Kits                       Overview            Sample apps            Connect to Arc            Deploy on Arc            Build with AI         Skills          MCP server             Quickstarts         Deploy contracts          Interact with contracts          Monitor contract events          Register your first AI agent          Create your first ERC-8183 job             Use cases         Payments          eCommerce checkout          Stablecoin FX          Agentic economy             Tools         Account abstraction          Compliance          Data indexers          Node providers          Oracles                              On this page       ERC-8183 contract on Arc testnet    Verify the result    Summary            Quickstarts   Create your first ERC-8183 job           Copy page              Create an ERC-8183 job, fund escrow with USDC, submit a deliverable hash, and complete settlement on Arc Testnet.            Copy page              Documentation Index  Fetch the complete documentation index at:  https://docs.arc.io/llms.txt   Use this file to discover all available pages before exploring further.   This quickstart guides you through the ERC-8183 job lifecycle on Arc Testnet.
+You’ll create developer-controlled smart contract account wallets, create a job,
+fund escrow with USDC, submit a deliverable hash, and complete the job as the
+evaluator. Select the tab that matches your preferred setup.
+​         ERC-8183 contract on Arc testnet
+Contract  Address      AgenticCommerce reference implementation    0x0747EEf0706327138c69792bF28Cd525089e4583
+Circle Wallets      Viem        ​         Prerequisites   Before you begin, make sure you have:
+A  Circle Developer Console  account
+An API key created in the Console:  Keys → Create a key → API key → Standard
+Key
+Your
+Entity Secret registered
+​         Step 1. Set up your project   Create a project directory, install dependencies, and configure your
+environment.    ​         1.1. Create the project and install dependencies       Node.js      Python                                  mkdir   erc8183-quickstart
+cd   erc8183-quickstart
+npm   init   -y
+npm   pkg   set   type=module
+npm   pkg   set   scripts.start=&quot;tsx --env-file=.env index.ts&quot;
+npm   install   @circle-fin/developer-controlled-wallets   viem
+npm   install   --save-dev   tsx   typescript   @types/node
+​         1.2. Configure TypeScript (optional)           This step is optional. It helps prevent missing types in your IDE or editor.    Create a  tsconfig.json  file:                              npx   tsc   --init
+Then, update the  tsconfig.json  file:                              cat   &lt;&lt;  &#x27;EOF&#x27;   &gt;   tsconfig.json
+{
+&quot;compilerOptions&quot;: {
+&quot;target&quot;: &quot;ESNext&quot;,
+&quot;module&quot;: &quot;ESNext&quot;,
+&quot;moduleResolution&quot;: &quot;bundler&quot;,
+&quot;strict&quot;: true,
+&quot;types&quot;: [&quot;node&quot;]
+}
+}
+EOF
+​         1.3. Set environment variables   Create a  .env  file in the project directory and add your Circle credentials:                              CIRCLE_API_KEY=YOUR_API_KEY
+CIRCLE_ENTITY_SECRET=YOUR_ENTITY_SECRET
+CIRCLE_API_KEY  is your Circle Developer API key.
+CIRCLE_ENTITY_SECRET  is your registered Entity Secret.
+The  npm run start  command loads variables from  .env  using Node.js native
+env-file support. The  python index.py  command loads the same  .env  file via
+python-dotenv .          Prefer editing  .env  files in your IDE or editor so credentials are not
+leaked to your shell history.      ​         Step 2. Create developer-controlled wallets   In this step, you create two Arc Testnet dev-controlled wallets for the ERC-8183
+flow: a client wallet and a provider wallet. In this quickstart, the client also
+acts as the evaluator. If you already have two Arc Testnet funded dev-controlled
+wallets for this flow, skip to  Step 4 .  The Step 2 through 9 sections explain the flow in smaller pieces. Not every step
+includes a code snippet, and the snippets are not cumulative. To run the full
+workflow end to end, use the  complete script  at
+the end of this tutorial.      index.ts      index.py                                  const   walletSet   =   await   circleClient  .  createWalletSet  ({
+name:   &quot;ERC8183 Job Wallets&quot;  ,
+});
+const   walletsResponse   =   await   circleClient  .  createWallets  ({
+blockchains:   [  &quot;ARC-TESTNET&quot;  ],
+count:   2  ,
+walletSetId:   walletSet  .  data  ?.  walletSet  ?.  id   ??   &quot;&quot;  ,
+accountType:   &quot;SCA&quot;  ,
+});
+const   clientWallet   =   walletsResponse  .  data  ?.  wallets  ?.[  0  ]  !  ;
+const   providerWallet   =   walletsResponse  .  data  ?.  wallets  ?.[  1  ]  !  ;
+console  .  log  (  `Client:     ${  clientWallet  .  address  }   (  ${  clientWallet  .  id  }  )`  );
+console  .  log  (  `Provider:   ${  providerWallet  .  address  }   (  ${  providerWallet  .  id  }  )`  );
+console  .  log  (  `Evaluator:   ${  clientWallet  .  address  }   (  ${  clientWallet  .  id  }  )`  );
+​         Step 3. Fund the client wallet   The script will pause to allow you to fund the client wallet with Arc Testnet
+USDC from one of these faucets:
+Circle Faucet
+Circle Console Faucet
+You only fund the client wallet as the script transfers starter USDC to the
+provider wallet automatically before the ERC-8183 flow begins.          The public faucet is rate-limited, so this quickstart avoids requiring a
+second faucet request for the provider wallet.      ​         Step 4. Create the job   Call  createJob(provider, evaluator, expiredAt, description, hook)  on the
+deployed ERC-8183 reference implementation. This creates the job in the  Open
+state. This quickstart uses  address(0)  for  hook  so the flow stays on the
+default non-hooked path.      index.ts      index.py                                  const   createJobTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   clientWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;createJob(address,address,uint256,string,address)&quot;  ,
+abiParameters:   [
+providerWallet  .  address  !  ,
+clientWallet  .  address  !  ,
+expiredAt  .  toString  (),
+&quot;ERC-8183 demo job on Arc Testnet&quot;  ,
+&quot;0x0000000000000000000000000000000000000000&quot;  ,
+],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+​         Step 5. Set the budget   In this deployed contract, the provider sets the job price by calling
+setBudget(jobId, amount, optParams) .      index.ts      index.py                                  const   setBudgetTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   providerWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;setBudget(uint256,uint256,bytes)&quot;  ,
+abiParameters:   [  jobId  .  toString  (),   JOB_BUDGET  .  toString  (),   &quot;0x&quot;  ],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+​         Step 6. Approve USDC and fund escrow   Before the client can fund the job, the USDC contract must approve the ERC-8183
+contract to transfer the escrow amount. Then the client calls
+fund(jobId, optParams)  to move the job into the  Funded  state.      index.ts      index.py                                  const   approveTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   clientWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   &quot;0x3600000000000000000000000000000000000000&quot;  ,
+abiFunctionSignature:   &quot;approve(address,uint256)&quot;  ,
+abiParameters:   [  AGENTIC_COMMERCE_CONTRACT  ,   JOB_BUDGET  .  toString  ()],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+const   fundTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   clientWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;fund(uint256,bytes)&quot;  ,
+abiParameters:   [  jobId  .  toString  (),   &quot;0x&quot;  ],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+​         Step 7. Submit the deliverable   The provider submits a  bytes32  deliverable hash, moving the job into the
+Submitted  state.      index.ts      index.py                                  const   deliverableHash   =   keccak256  (  toHex  (  &quot;arc-erc8183-demo-deliverable&quot;  ));
+const   submitTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   providerWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;submit(uint256,bytes32,bytes)&quot;  ,
+abiParameters:   [  jobId  .  toString  (),   deliverableHash  ,   &quot;0x&quot;  ],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+​         Step 8. Complete the job   The evaluator completes the job by calling  complete(jobId, reason, optParams) .
+In this quickstart, the client is also the evaluator.      index.ts      index.py                                  const   reasonHash   =   keccak256  (  toHex  (  &quot;deliverable-approved&quot;  ));
+const   completeTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   clientWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;complete(uint256,bytes32,bytes)&quot;  ,
+abiParameters:   [  jobId  .  toString  (),   reasonHash  ,   &quot;0x&quot;  ],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+​         Step 9. Check the final job state   Read the job back from the contract to confirm it reached  Completed . This
+reference implementation does not return the deliverable in  getJob() , so the
+script prints the submitted deliverable hash from local flow state instead.      index.ts      index.py                                  const   job   =   await   publicClient  .  readContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;getJob&quot;  ,
+args:   [  jobId  ],
+});
+console  .  log  (  `Job ID:   ${  jobId  }  `  );
+console  .  log  (  `Status:   ${  STATUS_NAMES  [  Number  (  job  .  status  )]  }  `  );
+console  .  log  (  `Budget:   ${  formatUnits  (  job  .  budget  ,   6  )  }   USDC`  );
+console  .  log  (  `Hook:   ${  job  .  hook  }  `  );
+console  .  log  (  `Deliverable hash submitted:   ${  deliverableHash  }  `  );
+​         Full job lifecycle script   These complete scripts below combines all the preceding steps into a single
+runnable file.      index.ts      index.py                                  import   {   createInterface   }   from   &quot;node:readline/promises&quot;  ;
+import   {   setTimeout   as   delay   }   from   &quot;node:timers/promises&quot;  ;
+import   {   stdin   as   input  ,   stdout   as   output   }   from   &quot;node:process&quot;  ;
+import   {   initiateDeveloperControlledWalletsClient   }   from   &quot;@circle-fin/developer-controlled-wallets&quot;  ;
+import   {
+createPublicClient  ,
+decodeEventLog  ,
+formatUnits  ,
+http  ,
+keccak256  ,
+parseUnits  ,
+toHex  ,
+type   Address  ,
+type   Hex  ,
+}   from   &quot;viem&quot;  ;
+import   {   arcTestnet   }   from   &quot;viem/chains&quot;  ;
+// To bootstrap provider wallet during setup (see Step 3)
+const   PROVIDER_STARTER_BALANCE   =   &quot;1&quot;  ;
+const   AGENTIC_COMMERCE_CONTRACT   =
+&quot;0x0747EEf0706327138c69792bF28Cd525089e4583&quot;   as   Address  ;
+const   JOB_BUDGET   =   parseUnits  (  &quot;5&quot;  ,   6  );   // 5 USDC (ERC-20, 6 decimals)
+const   circleClient   =   initiateDeveloperControlledWalletsClient  ({
+apiKey:   process  .  env  .  CIRCLE_API_KEY  !  ,
+entitySecret:   process  .  env  .  CIRCLE_ENTITY_SECRET  !  ,
+});
+const   publicClient   =   createPublicClient  ({
+chain:   arcTestnet  ,
+transport:   http  (),
+});
+const   agenticCommerceAbi   =   [
+{
+type:   &quot;function&quot;  ,
+name:   &quot;createJob&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;provider&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;evaluator&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;expiredAt&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;description&quot;  ,   type:   &quot;string&quot;   },
+{   name:   &quot;hook&quot;  ,   type:   &quot;address&quot;   },
+],
+outputs:   [{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   }],
+},
+{
+type:   &quot;function&quot;  ,
+name:   &quot;setBudget&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;amount&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;optParams&quot;  ,   type:   &quot;bytes&quot;   },
+],
+outputs:   [],
+},
+{
+type:   &quot;function&quot;  ,
+name:   &quot;fund&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;optParams&quot;  ,   type:   &quot;bytes&quot;   },
+],
+outputs:   [],
+},
+{
+type:   &quot;function&quot;  ,
+name:   &quot;submit&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;deliverable&quot;  ,   type:   &quot;bytes32&quot;   },
+{   name:   &quot;optParams&quot;  ,   type:   &quot;bytes&quot;   },
+],
+outputs:   [],
+},
+{
+type:   &quot;function&quot;  ,
+name:   &quot;complete&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;reason&quot;  ,   type:   &quot;bytes32&quot;   },
+{   name:   &quot;optParams&quot;  ,   type:   &quot;bytes&quot;   },
+],
+outputs:   [],
+},
+{
+type:   &quot;function&quot;  ,
+name:   &quot;getJob&quot;  ,
+stateMutability:   &quot;view&quot;  ,
+inputs:   [{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   }],
+outputs:   [
+{
+type:   &quot;tuple&quot;  ,
+components:   [
+{   name:   &quot;id&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;client&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;provider&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;evaluator&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;description&quot;  ,   type:   &quot;string&quot;   },
+{   name:   &quot;budget&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;expiredAt&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;status&quot;  ,   type:   &quot;uint8&quot;   },
+{   name:   &quot;hook&quot;  ,   type:   &quot;address&quot;   },
+],
+},
+],
+},
+{
+type:   &quot;event&quot;  ,
+name:   &quot;JobCreated&quot;  ,
+inputs:   [
+{   indexed:   true  ,   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   indexed:   true  ,   name:   &quot;client&quot;  ,   type:   &quot;address&quot;   },
+{   indexed:   true  ,   name:   &quot;provider&quot;  ,   type:   &quot;address&quot;   },
+{   indexed:   false  ,   name:   &quot;evaluator&quot;  ,   type:   &quot;address&quot;   },
+{   indexed:   false  ,   name:   &quot;expiredAt&quot;  ,   type:   &quot;uint256&quot;   },
+{   indexed:   false  ,   name:   &quot;hook&quot;  ,   type:   &quot;address&quot;   },
+],
+anonymous:   false  ,
+},
+]   as   const  ;
+const   STATUS_NAMES   =   [
+&quot;Open&quot;  ,
+&quot;Funded&quot;  ,
+&quot;Submitted&quot;  ,
+&quot;Completed&quot;  ,
+&quot;Rejected&quot;  ,
+&quot;Expired&quot;  ,
+];
+function   extractJobId  (  txHash  :   Hex  ) {
+return   publicClient
+.  getTransactionReceipt  ({   hash:   txHash   })
+.  then  ((  receipt  )   =&gt;   {
+for   (  const   log   of   receipt  .  logs  ) {
+try   {
+const   decoded   =   decodeEventLog  ({
+abi:   agenticCommerceAbi  ,
+data:   log  .  data  ,
+topics:   log  .  topics  ,
+});
+if   (  decoded  .  eventName   ===   &quot;JobCreated&quot;  ) {
+return   decoded  .  args  .  jobId  ;
+}
+}   catch   {
+continue  ;
+}
+}
+throw   new   Error  (  &quot;Could not parse JobCreated event&quot;  );
+});
+}
+async   function   waitForTransaction  (  txId  :   string  ,   label  :   string  ) {
+process  .  stdout  .  write  (  `  Waiting for   ${  label  }  `  );
+for   (  let   i   =   0  ;   i   &lt;   60  ;   i  ++  ) {
+await   delay  (  2000  );
+const   tx   =   await   circleClient  .  getTransaction  ({   id:   txId   });
+const   data   =   tx  .  data  ?.  transaction  ;
+if   (  data  ?.  state   ===   &quot;COMPLETE&quot;   &amp;&amp;   data  .  txHash  ) {
+const   txHash   =   data  .  txHash  ;
+console  .  log  (
+` ✓  \n    Tx:   ${  arcTestnet  .  blockExplorers  .  default  .  url  }  /tx/  ${  txHash  }  `  ,
+);
+return   txHash   as   Hex  ;
+}
+if   (  data  ?.  state   ===   &quot;FAILED&quot;  ) {
+throw   new   Error  (  `  ${  label  }   failed onchain`  );
+}
+process  .  stdout  .  write  (  &quot;.&quot;  );
+}
+throw   new   Error  (  `  ${  label  }   timed out`  );
+}
+async   function   printBalances  (
+title  :   string  ,
+wallets  :   Array  &lt;{   label  :   string  ;   id  ?:   string  ;   address  ?:   string   |   null   }&gt;,
+) {
+console  .  log  (  `  \n  ${  title  }  :`  );
+for   (  const   wallet   of   wallets  ) {
+const   balances   =   await   circleClient  .  getWalletTokenBalance  ({
+id:   wallet  .  id  !  ,
+});
+const   usdc   =   balances  .  data  ?.  tokenBalances  ?.  find  (
+(  b  )   =&gt;   b  .  token  ?.  symbol   ===   &quot;USDC&quot;  ,
+);
+console  .  log  (  `    ${  wallet  .  label  }  :   ${  wallet  .  address  }  `  );
+console  .  log  (  `    USDC:   ${  usdc  ?.  amount   ??   &quot;0&quot;  }  `  );
+}
+}
+async   function   main  () {
+console  .  log  (  &quot;── Step 1: Create wallets ──&quot;  );
+const   walletSet   =   await   circleClient  .  createWalletSet  ({
+name:   &quot;ERC8183 Job Wallets&quot;  ,
+});
+const   walletsResponse   =   await   circleClient  .  createWallets  ({
+blockchains:   [  &quot;ARC-TESTNET&quot;  ],
+count:   2  ,
+walletSetId:   walletSet  .  data  ?.  walletSet  ?.  id   ??   &quot;&quot;  ,
+accountType:   &quot;SCA&quot;  ,
+});
+const   clientWallet   =   walletsResponse  .  data  ?.  wallets  ?.[  0  ]  !  ;
+const   providerWallet   =   walletsResponse  .  data  ?.  wallets  ?.[  1  ]  !  ;
+console  .  log  (  &quot;  \n  ── Step 2: Fund the client wallet ──&quot;  );
+console  .  log  (  &quot;  Fund this wallet with Arc Testnet USDC:&quot;  );
+console  .  log  (  `  Client:   ${  clientWallet  .  address  }  `  );
+console  .  log  (  `  Wallet ID:   ${  clientWallet  .  id  }  `  );
+console  .  log  (  &quot;  Public faucet:  https://faucet.circle.com&quot;  );
+console  .  log  (  &quot;  Console faucet: https://console.circle.com/faucet&quot;  );
+console  .  log  (  &quot;  \n    This script will fund the provider wallet automatically.&quot;  );
+const   rl   =   createInterface  ({   input  ,   output   });
+await   rl  .  question  (  &quot;  \n  Press Enter after the client wallet is funded... &quot;  );
+rl  .  close  ();
+console  .  log  (  &quot;  \n  ── Step 3: Transfer starter USDC to provider ──&quot;  );
+const   transferTx   =   await   circleClient  .  createTransaction  ({
+walletAddress:   clientWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+tokenAddress:   &quot;0x3600000000000000000000000000000000000000&quot;  ,
+destinationAddress:   providerWallet  .  address  !  ,
+amount:   [  PROVIDER_STARTER_BALANCE  ],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+await   waitForTransaction  (
+transferTx  .  data  ?.  id  !  ,
+&quot;transfer starter USDC to provider&quot;  ,
+);
+console  .  log  (  &quot;  \n  ── Step 4: Check balances ──&quot;  );
+await   printBalances  (  &quot;Balances&quot;  , [
+{   label:   &quot;Client&quot;  ,   ...  clientWallet   },
+{   label:   &quot;Provider&quot;  ,   ...  providerWallet   },
+]);
+const   now   =   await   publicClient  .  getBlock  ();
+const   expiredAt   =   now  .  timestamp   +   3600  n  ;
+console  .  log  (  &quot;  \n  ── Step 5: Create job - createJob() ──&quot;  );
+const   createJobTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   clientWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;createJob(address,address,uint256,string,address)&quot;  ,
+abiParameters:   [
+providerWallet  .  address  !  ,
+clientWallet  .  address  !  ,
+expiredAt  .  toString  (),
+&quot;ERC-8183 demo job on Arc Testnet&quot;  ,
+&quot;0x0000000000000000000000000000000000000000&quot;  ,
+],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+const   createJobTxHash   =   await   waitForTransaction  (
+createJobTx  .  data  ?.  id  !  ,
+&quot;create job&quot;  ,
+);
+const   jobId   =   await   extractJobId  (  createJobTxHash  );
+console  .  log  (  `  Job ID:   ${  jobId  }  `  );
+console  .  log  (  &quot;  \n  ── Step 6: Set budget - setBudget() ──&quot;  );
+const   setBudgetTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   providerWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;setBudget(uint256,uint256,bytes)&quot;  ,
+abiParameters:   [  jobId  .  toString  (),   JOB_BUDGET  .  toString  (),   &quot;0x&quot;  ],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+await   waitForTransaction  (  setBudgetTx  .  data  ?.  id  !  ,   &quot;set budget&quot;  );
+console  .  log  (  &quot;  \n  ── Step 7: Approve USDC - approve() ──&quot;  );
+const   approveTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   clientWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   &quot;0x3600000000000000000000000000000000000000&quot;  ,
+abiFunctionSignature:   &quot;approve(address,uint256)&quot;  ,
+abiParameters:   [  AGENTIC_COMMERCE_CONTRACT  ,   JOB_BUDGET  .  toString  ()],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+await   waitForTransaction  (  approveTx  .  data  ?.  id  !  ,   &quot;approve USDC&quot;  );
+console  .  log  (  &quot;  \n  ── Step 8: Fund escrow - fund() ──&quot;  );
+const   fundTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   clientWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;fund(uint256,bytes)&quot;  ,
+abiParameters:   [  jobId  .  toString  (),   &quot;0x&quot;  ],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+await   waitForTransaction  (  fundTx  .  data  ?.  id  !  ,   &quot;fund escrow&quot;  );
+console  .  log  (  &quot;  \n  ── Step 9: Submit deliverable - submit() ──&quot;  );
+const   deliverableHash   =   keccak256  (  toHex  (  &quot;arc-erc8183-demo-deliverable&quot;  ));
+const   submitTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   providerWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;submit(uint256,bytes32,bytes)&quot;  ,
+abiParameters:   [  jobId  .  toString  (),   deliverableHash  ,   &quot;0x&quot;  ],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+await   waitForTransaction  (  submitTx  .  data  ?.  id  !  ,   &quot;submit deliverable&quot;  );
+console  .  log  (  &quot;  \n  ── Step 10: Complete job - complete() ──&quot;  );
+const   reasonHash   =   keccak256  (  toHex  (  &quot;deliverable-approved&quot;  ));
+const   completeTx   =   await   circleClient  .  createContractExecutionTransaction  ({
+walletAddress:   clientWallet  .  address  !  ,
+blockchain:   &quot;ARC-TESTNET&quot;  ,
+contractAddress:   AGENTIC_COMMERCE_CONTRACT  ,
+abiFunctionSignature:   &quot;complete(uint256,bytes32,bytes)&quot;  ,
+abiParameters:   [  jobId  .  toString  (),   reasonHash  ,   &quot;0x&quot;  ],
+fee:   {   type:   &quot;level&quot;  ,   config:   {   feeLevel:   &quot;MEDIUM&quot;   } },
+});
+await   waitForTransaction  (  completeTx  .  data  ?.  id  !  ,   &quot;complete job&quot;  );
+console  .  log  (  &quot;  \n  ── Step 11: Check final job state ──&quot;  );
+const   job   =   await   publicClient  .  readContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;getJob&quot;  ,
+args:   [  jobId  ],
+});
+console  .  log  (  `  Job ID:   ${  jobId  }  `  );
+console  .  log  (  `  Status:   ${  STATUS_NAMES  [  Number  (  job  .  status  )]  }  `  );
+console  .  log  (  `  Budget:   ${  formatUnits  (  job  .  budget  ,   6  )  }   USDC`  );
+console  .  log  (  `  Hook:   ${  job  .  hook  }  `  );
+console  .  log  (  `  Deliverable hash submitted:   ${  deliverableHash  }  `  );
+console  .  log  (  &quot;  \n  ── Step 12: Check final balances ──&quot;  );
+await   printBalances  (  &quot;Balances&quot;  , [
+{   label:   &quot;Client&quot;  ,   ...  clientWallet   },
+{   label:   &quot;Provider&quot;  ,   ...  providerWallet   },
+]);
+}
+main  ().  catch  ((  error  )   =&gt;   {
+console  .  error  (  &quot;  \n  Error:&quot;  ,   error  .  message   ||   error  );
+process  .  exit  (  1  );
+});
+See all 354 lines        Run the script:      Node.js      Python                                  npm   run   start
+​         Prerequisites   Before you begin, make sure you have:
+Installed  Node.js v22+
+Two self-managed EVM wallets for Arc Testnet
+Testnet USDC in both wallets to pay for gas and for the client wallet to
+fund escrow
+​         Step 1. Set up your project   Create a project directory, install dependencies, and configure your
+environment.    ​         1.1. Create the project and install dependencies                               mkdir   erc8183-quickstart
+cd   erc8183-quickstart
+npm   init   -y
+npm   pkg   set   type=module
+npm   pkg   set   scripts.start=&quot;tsx --env-file=.env index.ts&quot;
+npm   install   viem
+npm   install   --save-dev   tsx   typescript   @types/node
+​         1.2. Configure TypeScript (optional)           This step is optional. It helps prevent missing types in your IDE or editor.    Create a  tsconfig.json  file:                              npx   tsc   --init
+Then, update the  tsconfig.json  file:                              cat   &lt;&lt;  &#x27;EOF&#x27;   &gt;   tsconfig.json
+{
+&quot;compilerOptions&quot;: {
+&quot;target&quot;: &quot;ESNext&quot;,
+&quot;module&quot;: &quot;ESNext&quot;,
+&quot;moduleResolution&quot;: &quot;bundler&quot;,
+&quot;strict&quot;: true,
+&quot;types&quot;: [&quot;node&quot;]
+}
+}
+EOF
+​         1.3. Set environment variables   Create a  .env  file in the project directory and add the two private keys used
+for the flow:                              CLIENT_PRIVATE_KEY=0xYOUR_CLIENT_PRIVATE_KEY
+PROVIDER_PRIVATE_KEY=0xYOUR_PROVIDER_PRIVATE_KEY
+CLIENT_PRIVATE_KEY  is the  0x -prefixed private key for the Arc Testnet
+wallet that creates the job, approves USDC, funds escrow, and completes the
+job as the evaluator.
+PROVIDER_PRIVATE_KEY  is the  0x -prefixed private key for the Arc Testnet
+wallet that sets the budget and submits the deliverable.
+The  npm run start  command loads variables from  .env  using Node.js native
+env-file support.          Prefer editing  .env  files in your IDE or editor so credentials are not
+leaked to your shell history.      ​         Step 2. Prepare your wallets   In this step, you prepare two self-managed Arc Testnet wallets for the ERC-8183
+flow. One wallet acts as the client and evaluator, and the other acts as the
+provider. If you already have two funded Arc Testnet wallets for this flow, skip
+to  Step 3 .  The Step 3 through 8 code snippets explain the flow in smaller pieces. They are
+not cumulative and will not run if pasted together. To run the full workflow end
+to end, use the  complete script  at the end of
+this tab.    ​         2.1. Create or fund your wallets   Create two self-managed EVM wallets if you do not already have them. For
+example, you can generate throwaway wallets with Foundry:                              cast   wallet   new   --json
+Run it twice, once for the client wallet and once for the provider wallet, then
+fund both wallets with Arc Testnet USDC so they can submit transactions. Fund
+the client wallet with Arc Testnet USDC so it can escrow the job budget.    ​         2.2. Confirm wallet roles
+the client wallet creates the job, approves USDC, funds escrow, and completes
+the job as the evaluator
+the provider wallet sets the budget and submits the deliverable
+​         Step 3. Create the job   Call  createJob(provider, evaluator, expiredAt, description, hook)  on the
+deployed ERC-8183 reference implementation. This creates the job in the  Open
+state. This quickstart uses  address(0)  for  hook  so the flow stays on the
+default non-hooked path.     index.ts                               const   block   =   await   publicClient  .  getBlock  ();
+const   expiredAt   =   block  .  timestamp   +   3600  n  ;
+const   createJobHash   =   await   clientWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;createJob&quot;  ,
+args:   [
+providerAccount  .  address  ,
+clientAccount  .  address  ,
+expiredAt  ,
+&quot;ERC-8183 demo job on Arc Testnet&quot;  ,
+&quot;0x0000000000000000000000000000000000000000&quot;  ,
+],
+});
+​         Step 4. Set the budget   In this deployed contract, the provider sets the job price by calling
+setBudget(jobId, amount, optParams) .     index.ts                               const   setBudgetHash   =   await   providerWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;setBudget&quot;  ,
+args:   [  jobId  ,   JOB_BUDGET  ,   &quot;0x&quot;  ],
+});
+​         Step 5. Approve USDC and fund escrow   Before the client can fund the job, the USDC contract must approve the ERC-8183
+contract to transfer the escrow amount. Then the client calls
+fund(jobId, optParams)  to move the job into the  Funded  state.     index.ts                               const   approveHash   =   await   clientWalletClient  .  writeContract  ({
+address:   USDC_CONTRACT  ,
+abi:   erc20Abi  ,
+functionName:   &quot;approve&quot;  ,
+args:   [  AGENTIC_COMMERCE_CONTRACT  ,   JOB_BUDGET  ],
+});
+const   fundHash   =   await   clientWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;fund&quot;  ,
+args:   [  jobId  ,   &quot;0x&quot;  ],
+});
+​         Step 6. Submit the deliverable   The provider submits a  bytes32  deliverable hash, moving the job into the
+Submitted  state.     index.ts                               const   deliverableHash   =   keccak256  (  toHex  (  &quot;arc-erc8183-demo-deliverable&quot;  ));
+const   submitHash   =   await   providerWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;submit&quot;  ,
+args:   [  jobId  ,   deliverableHash  ,   &quot;0x&quot;  ],
+});
+​         Step 7. Complete the job   The evaluator completes the job by calling  complete(jobId, reason, optParams) .
+In this quickstart, the client is also the evaluator.     index.ts                               const   reasonHash   =   keccak256  (  toHex  (  &quot;work-delivered-and-approved&quot;  ));
+const   completeHash   =   await   clientWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;complete&quot;  ,
+args:   [  jobId  ,   reasonHash  ,   &quot;0x&quot;  ],
+});
+​         Step 8. Check the final job state   Read the job back from the contract to confirm it reached  Completed . This
+reference implementation does not return the deliverable in  getJob() , so the
+script prints the submitted deliverable hash from local flow state instead.     index.ts                               const   job   =   await   publicClient  .  readContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;getJob&quot;  ,
+args:   [  jobId  ],
+});
+console  .  log  (  `Job ID:   ${  job  .  id  }  `  );
+console  .  log  (  `Status:   ${  STATUS_NAMES  [  Number  (  job  .  status  )]  }  `  );
+console  .  log  (  `Budget:   ${  formatUnits  (  job  .  budget  ,   6  )  }   USDC`  );
+console  .  log  (  `Hook:   ${  job  .  hook  }  `  );
+console  .  log  (  `Deliverable hash submitted:   ${  deliverableHash  }  `  );
+This complete script combines the preceding steps into a single runnable file.    ​         Full job lifecycle script      index.ts                               import   {
+createPublicClient  ,
+createWalletClient  ,
+decodeEventLog  ,
+formatUnits  ,
+http  ,
+keccak256  ,
+toHex  ,
+}   from   &quot;viem&quot;  ;
+import   {   privateKeyToAccount   }   from   &quot;viem/accounts&quot;  ;
+import   {   arcTestnet   }   from   &quot;viem/chains&quot;  ;
+const   AGENTIC_COMMERCE_CONTRACT   =   &quot;0x0747EEf0706327138c69792bF28Cd525089e4583&quot;  ;
+const   USDC_CONTRACT   =   &quot;0x3600000000000000000000000000000000000000&quot;  ;
+const   JOB_BUDGET   =   1_000_000  n  ;
+const   clientAccount   =   privateKeyToAccount  (
+process  .  env  .  CLIENT_PRIVATE_KEY   as   `0x  ${  string  }  `  ,
+);
+const   providerAccount   =   privateKeyToAccount  (
+process  .  env  .  PROVIDER_PRIVATE_KEY   as   `0x  ${  string  }  `  ,
+);
+const   publicClient   =   createPublicClient  ({
+chain:   arcTestnet  ,
+transport:   http  (),
+});
+const   clientWalletClient   =   createWalletClient  ({
+account:   clientAccount  ,
+chain:   arcTestnet  ,
+transport:   http  (),
+});
+const   providerWalletClient   =   createWalletClient  ({
+account:   providerAccount  ,
+chain:   arcTestnet  ,
+transport:   http  (),
+});
+const   agenticCommerceAbi   =   [
+{
+name:   &quot;createJob&quot;  ,
+type:   &quot;function&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;provider&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;evaluator&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;expiredAt&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;description&quot;  ,   type:   &quot;string&quot;   },
+{   name:   &quot;hook&quot;  ,   type:   &quot;address&quot;   },
+],
+outputs:   [{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   }],
+},
+{
+name:   &quot;setBudget&quot;  ,
+type:   &quot;function&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;amount&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;optParams&quot;  ,   type:   &quot;bytes&quot;   },
+],
+outputs:   [],
+},
+{
+name:   &quot;fund&quot;  ,
+type:   &quot;function&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;optParams&quot;  ,   type:   &quot;bytes&quot;   },
+],
+outputs:   [],
+},
+{
+name:   &quot;submit&quot;  ,
+type:   &quot;function&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;deliverable&quot;  ,   type:   &quot;bytes32&quot;   },
+{   name:   &quot;optParams&quot;  ,   type:   &quot;bytes&quot;   },
+],
+outputs:   [],
+},
+{
+name:   &quot;complete&quot;  ,
+type:   &quot;function&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;reason&quot;  ,   type:   &quot;bytes32&quot;   },
+{   name:   &quot;optParams&quot;  ,   type:   &quot;bytes&quot;   },
+],
+outputs:   [],
+},
+{
+name:   &quot;getJob&quot;  ,
+type:   &quot;function&quot;  ,
+stateMutability:   &quot;view&quot;  ,
+inputs:   [{   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   }],
+outputs:   [
+{
+type:   &quot;tuple&quot;  ,
+components:   [
+{   name:   &quot;id&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;client&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;provider&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;evaluator&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;description&quot;  ,   type:   &quot;string&quot;   },
+{   name:   &quot;budget&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;expiredAt&quot;  ,   type:   &quot;uint256&quot;   },
+{   name:   &quot;status&quot;  ,   type:   &quot;uint8&quot;   },
+{   name:   &quot;hook&quot;  ,   type:   &quot;address&quot;   },
+],
+},
+],
+},
+{
+name:   &quot;JobCreated&quot;  ,
+type:   &quot;event&quot;  ,
+anonymous:   false  ,
+inputs:   [
+{   indexed:   true  ,   name:   &quot;jobId&quot;  ,   type:   &quot;uint256&quot;   },
+{   indexed:   true  ,   name:   &quot;client&quot;  ,   type:   &quot;address&quot;   },
+{   indexed:   true  ,   name:   &quot;provider&quot;  ,   type:   &quot;address&quot;   },
+{   indexed:   false  ,   name:   &quot;evaluator&quot;  ,   type:   &quot;address&quot;   },
+{   indexed:   false  ,   name:   &quot;expiredAt&quot;  ,   type:   &quot;uint256&quot;   },
+{   indexed:   false  ,   name:   &quot;hook&quot;  ,   type:   &quot;address&quot;   },
+],
+},
+]   as   const  ;
+const   erc20Abi   =   [
+{
+name:   &quot;approve&quot;  ,
+type:   &quot;function&quot;  ,
+stateMutability:   &quot;nonpayable&quot;  ,
+inputs:   [
+{   name:   &quot;spender&quot;  ,   type:   &quot;address&quot;   },
+{   name:   &quot;amount&quot;  ,   type:   &quot;uint256&quot;   },
+],
+outputs:   [{   name:   &quot;&quot;  ,   type:   &quot;bool&quot;   }],
+},
+{
+name:   &quot;balanceOf&quot;  ,
+type:   &quot;function&quot;  ,
+stateMutability:   &quot;view&quot;  ,
+inputs:   [{   name:   &quot;account&quot;  ,   type:   &quot;address&quot;   }],
+outputs:   [{   name:   &quot;&quot;  ,   type:   &quot;uint256&quot;   }],
+},
+]   as   const  ;
+const   STATUS_NAMES   =   [
+&quot;Open&quot;  ,
+&quot;Funded&quot;  ,
+&quot;Submitted&quot;  ,
+&quot;Completed&quot;  ,
+&quot;Rejected&quot;  ,
+&quot;Expired&quot;  ,
+];
+async   function   waitForTransaction  (  hash  :   `0x  ${  string  }  `  ,   label  :   string  ) {
+process  .  stdout  .  write  (  `  Waiting for   ${  label  }  `  );
+const   receipt   =   await   publicClient  .  waitForTransactionReceipt  ({   hash   });
+console  .  log  (  ` ✓  \n    Tx:   ${  arcTestnet  .  blockExplorers  .  default  .  url  }  /tx/  ${  hash  }  `  );
+return   receipt  ;
+}
+async   function   printBalances  (  title  :   string  ) {
+console  .  log  (  `  \n  ${  title  }  :`  );
+const   clientBalance   =   await   publicClient  .  readContract  ({
+address:   USDC_CONTRACT  ,
+abi:   erc20Abi  ,
+functionName:   &quot;balanceOf&quot;  ,
+args:   [  clientAccount  .  address  ],
+});
+const   providerBalance   =   await   publicClient  .  readContract  ({
+address:   USDC_CONTRACT  ,
+abi:   erc20Abi  ,
+functionName:   &quot;balanceOf&quot;  ,
+args:   [  providerAccount  .  address  ],
+});
+console  .  log  (  `  Client:   ${  clientAccount  .  address  }  `  );
+console  .  log  (  `    USDC:   ${  formatUnits  (  clientBalance  ,   6  )  }  `  );
+console  .  log  (  `  Provider:   ${  providerAccount  .  address  }  `  );
+console  .  log  (  `    USDC:   ${  formatUnits  (  providerBalance  ,   6  )  }  `  );
+}
+async   function   main  ()  :   Promise  &lt;  void  &gt; {
+console  .  log  (  &quot;── Step 1: Prepare accounts ──&quot;  );
+console  .  log  (  `  Client:   ${  clientAccount  .  address  }  `  );
+console  .  log  (  `  Provider:   ${  providerAccount  .  address  }  `  );
+console  .  log  (  `  Evaluator:   ${  clientAccount  .  address  }  `  );
+console  .  log  (  &quot;  \n  ── Step 2: Check balances ──&quot;  );
+await   printBalances  (  &quot;Balances&quot;  );
+const   block   =   await   publicClient  .  getBlock  ();
+const   expiredAt   =   block  .  timestamp   +   3600  n  ;
+console  .  log  (  &quot;  \n  ── Step 3: Create job - createJob() ──&quot;  );
+const   createJobHash   =   await   clientWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;createJob&quot;  ,
+args:   [
+providerAccount  .  address  ,
+clientAccount  .  address  ,
+expiredAt  ,
+&quot;ERC-8183 demo job on Arc Testnet&quot;  ,
+&quot;0x0000000000000000000000000000000000000000&quot;  ,
+],
+});
+const   createJobReceipt   =   await   waitForTransaction  (
+createJobHash  ,
+&quot;create job&quot;  ,
+);
+let   jobId  :   bigint   |   undefined  ;
+for   (  const   log   of   createJobReceipt  .  logs  ) {
+try   {
+const   decoded   =   decodeEventLog  ({
+abi:   agenticCommerceAbi  ,
+data:   log  .  data  ,
+topics:   log  .  topics  ,
+});
+if   (  decoded  .  eventName   ===   &quot;JobCreated&quot;  ) {
+jobId   =   decoded  .  args  .  jobId  ;
+break  ;
+}
+}   catch   {
+continue  ;
+}
+}
+if   (  jobId   ==   null  ) {
+throw   new   Error  (  &quot;Could not parse JobCreated event&quot;  );
+}
+console  .  log  (  `  Job ID:   ${  jobId  }  `  );
+console  .  log  (  &quot;  \n  ── Step 4: Set budget - setBudget() ──&quot;  );
+const   setBudgetHash   =   await   providerWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;setBudget&quot;  ,
+args:   [  jobId  ,   JOB_BUDGET  ,   &quot;0x&quot;  ],
+});
+await   waitForTransaction  (  setBudgetHash  ,   &quot;set budget&quot;  );
+console  .  log  (  &quot;  \n  ── Step 5: Approve USDC - approve() ──&quot;  );
+const   approveHash   =   await   clientWalletClient  .  writeContract  ({
+address:   USDC_CONTRACT  ,
+abi:   erc20Abi  ,
+functionName:   &quot;approve&quot;  ,
+args:   [  AGENTIC_COMMERCE_CONTRACT  ,   JOB_BUDGET  ],
+});
+await   waitForTransaction  (  approveHash  ,   &quot;approve USDC&quot;  );
+console  .  log  (  &quot;  \n  ── Step 6: Fund escrow - fund() ──&quot;  );
+const   fundHash   =   await   clientWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;fund&quot;  ,
+args:   [  jobId  ,   &quot;0x&quot;  ],
+});
+await   waitForTransaction  (  fundHash  ,   &quot;fund escrow&quot;  );
+console  .  log  (  &quot;  \n  ── Step 7: Submit deliverable - submit() ──&quot;  );
+const   deliverableHash   =   keccak256  (  toHex  (  &quot;arc-erc8183-demo-deliverable&quot;  ));
+const   submitHash   =   await   providerWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;submit&quot;  ,
+args:   [  jobId  ,   deliverableHash  ,   &quot;0x&quot;  ],
+});
+await   waitForTransaction  (  submitHash  ,   &quot;submit deliverable&quot;  );
+console  .  log  (  &quot;  \n  ── Step 8: Complete job - complete() ──&quot;  );
+const   reasonHash   =   keccak256  (  toHex  (  &quot;work-delivered-and-approved&quot;  ));
+const   completeHash   =   await   clientWalletClient  .  writeContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;complete&quot;  ,
+args:   [  jobId  ,   reasonHash  ,   &quot;0x&quot;  ],
+});
+await   waitForTransaction  (  completeHash  ,   &quot;complete job&quot;  );
+console  .  log  (  &quot;  \n  ── Step 9: Check final job state ──&quot;  );
+const   job   =   await   publicClient  .  readContract  ({
+address:   AGENTIC_COMMERCE_CONTRACT  ,
+abi:   agenticCommerceAbi  ,
+functionName:   &quot;getJob&quot;  ,
+args:   [  jobId  ],
+});
+console  .  log  (  `  Job ID:   ${  job  .  id  }  `  );
+console  .  log  (  `  Status:   ${  STATUS_NAMES  [  Number  (  job  .  status  )]  }  `  );
+console  .  log  (  `  Budget:   ${  formatUnits  (  job  .  budget  ,   6  )  }   USDC`  );
+console  .  log  (  `  Hook:   ${  job  .  hook  }  `  );
+console  .  log  (  `  Deliverable hash submitted:   ${  deliverableHash  }  `  );
+console  .  log  (  &quot;  \n  ── Step 10: Check final balances ──&quot;  );
+await   printBalances  (  &quot;Balances&quot;  );
+}
+void   main  ().  catch  ((  error  )   =&gt;   {
+console  .  error  (  &quot;  \n  Error:&quot;  ,   error  );
+process  .  exit  (  1  );
+});
+See all 314 lines    Run the script:                              npm   run   start
+​         Verify the result
+If the flow succeeds, the output should show:
+a created job ID
+a completed final status
+the client balance reduced by the funded escrow amount
+the provider balance increased after completion
+If platform or evaluator fees are configured on the deployed contract, the
+provider receives the net amount after fees rather than the full job budget.
+You can also inspect the transaction links in the terminal output on
+Arcscan Testnet .
+​         Summary
+After completing this quickstart, you’ve successfully:
+Set up a project for running an ERC-8183 job flow on Arc Testnet
+Prepared client and provider wallets for the client, provider, and evaluator
+roles
+Walked through an example ERC-8183 job lifecycle
+Confirmed balances and job state in the script output and reviewed
+transactions on Arcscan Testnet
+Was this page helpful?         Yes        No               Register your first AI agent    Payments               ⌘ I                        Arc Docs  home page       x      discord          Links  Network status  Blog  Community  Arc homepage      Resources  Terms of service  Privacy policy  Cookie policy  llms.txt       x      discord                         Assistant                               Responses are generated using AI and may contain mistakes.

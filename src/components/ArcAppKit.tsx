@@ -68,25 +68,52 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
 
       // Check if this is a Swap or a Bridge action
       if (activeTab === 'swap') {
-        // --- SWAP LOGIC (NATIVE TRANSFER FOR NOW) ---
+        // --- SWAP LOGIC ---
         setStatusMsg('📤 Please confirm the Swap transaction in your wallet...');
 
         const finalRecipient = recipient.trim() || from;
-        let valueHex = '0x0';
-        if (swapAmount && !isNaN(Number(swapAmount))) {
-          const amountWei = BigInt(Math.floor(Number(swapAmount) * 1e18));
-          valueHex = '0x' + amountWei.toString(16);
-        }
+        let txHash;
 
-        const txHash = await eth.request({
-          method: 'eth_sendTransaction',
-          params: [{
-            from,
-            to: finalRecipient,
-            value: valueHex,
-            data: '0x',
-          }],
-        });
+        if (isReversed) {
+          // EURC is an ERC-20 token on Arc Testnet with 6 decimals
+          const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+          let data = '0x';
+          
+          if (swapAmount && !isNaN(Number(swapAmount))) {
+            const amountWei = BigInt(Math.floor(Number(swapAmount) * 1e6));
+            // Manual ABI encoding for transfer(address,uint256) (selector: 0xa9059cbb)
+            const toAddress = finalRecipient.toLowerCase().replace('0x', '').padStart(64, '0');
+            const valuePadded = amountWei.toString(16).padStart(64, '0');
+            data = '0xa9059cbb' + toAddress + valuePadded;
+          }
+
+          txHash = await eth.request({
+            method: 'eth_sendTransaction',
+            params: [{
+              from,
+              to: EURC_ADDRESS,
+              value: '0x0',
+              data,
+            }],
+          });
+        } else {
+          // Native USDC is the gas token on Arc Testnet with 18 decimals
+          let valueHex = '0x0';
+          if (swapAmount && !isNaN(Number(swapAmount))) {
+            const amountWei = BigInt(Math.floor(Number(swapAmount) * 1e18));
+            valueHex = '0x' + amountWei.toString(16);
+          }
+
+          txHash = await eth.request({
+            method: 'eth_sendTransaction',
+            params: [{
+              from,
+              to: finalRecipient,
+              value: valueHex,
+              data: '0x',
+            }],
+          });
+        }
 
         setStatusMsg('✅ Swap Transaction submitted!');
         const swapResult = {
@@ -111,7 +138,8 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
           txHash,
           status: 'COMPLETE',
           explorerUrl: swapResult.explorerUrl,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          tokenSymbol: isReversed ? 'EURC' : 'USDC'
         });
 
       } else if (activeTab === 'bridge') {
@@ -181,7 +209,8 @@ export const ArcAppKit: React.FC<ArcAppKitProps> = ({ connectedAccount, getProvi
             txHash,
             status: resultObj.state === 'success' ? 'COMPLETE' : 'PENDING',
             explorerUrl: bridgeResult.explorerUrl,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            tokenSymbol: 'USDC'
           });
 
         } catch (bridgeErr: any) {
