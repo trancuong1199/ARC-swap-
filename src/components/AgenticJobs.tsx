@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { addApiLog } from '../lib/ApiLogger';
 
 interface AgenticJobsProps {
   connectedAccount: string | null;
@@ -47,12 +48,27 @@ export const AgenticJobs: React.FC<AgenticJobsProps> = ({ connectedAccount, getP
     return await ethersProvider.getSigner();
   };
 
-  const fetchJobStatus = async (id: string) => {
+  const fetchJobStatus = async (id: string, logData = false) => {
     try {
       const signer = await getEthersSigner();
       const contract = new ethers.Contract(AGENTIC_COMMERCE_CONTRACT, agenticCommerceAbi, signer);
       const job = await contract.getJob(id);
       setJobStatus(Number(job[7])); // status is at index 7
+
+      if (logData) {
+        const jobData = {
+          id: job[0].toString(),
+          client: job[1],
+          provider: job[2],
+          evaluator: job[3],
+          description: job[4],
+          budget: ethers.formatUnits(job[5], 6) + " USDC",
+          expiredAt: new Date(Number(job[6]) * 1000).toLocaleString(),
+          status: STATUS_NAMES[Number(job[7])],
+          hook: job[8]
+        };
+        appendLog(`\n[On-Chain Job State]:\n${JSON.stringify(jobData, null, 2)}`);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -86,7 +102,12 @@ export const AgenticJobs: React.FC<AgenticJobsProps> = ({ connectedAccount, getP
       
       appendLog(`Transaction sent! Waiting for confirmation... Hash: ${createTx.hash}`);
       const receipt = await createTx.wait();
-      appendLog("Job Created successfully!");
+      addApiLog({
+        status: 201,
+        method: "POST",
+        path: `/v1/w3s/agentic-commerce/createJob?hash=${createTx.hash.substring(0, 10)}...`
+      });
+      appendLog(`Job Created successfully! [Block: ${receipt.blockNumber}, Gas Used: ${receipt.gasUsed.toString()}]`);
       
       // Parse event to get Job ID
       let newJobId = null;
@@ -112,10 +133,15 @@ export const AgenticJobs: React.FC<AgenticJobsProps> = ({ connectedAccount, getP
       appendLog("Setting budget...");
       const budgetUnits = ethers.parseUnits(budget, 6); // USDC uses 6 decimals
       const budgetTx = await contract.setBudget(newJobId, budgetUnits, "0x");
-      await budgetTx.wait();
-      appendLog("Budget set successfully!");
+      const budgetReceipt = await budgetTx.wait();
+      addApiLog({
+        status: 200,
+        method: "PUT",
+        path: `/v1/w3s/agentic-commerce/jobs/${newJobId}/budget?hash=${budgetTx.hash.substring(0, 10)}...`
+      });
+      appendLog(`Budget set successfully! [Block: ${budgetReceipt.blockNumber}]`);
       
-      await fetchJobStatus(newJobId);
+      await fetchJobStatus(newJobId, true);
 
     } catch (err: any) {
       appendLog(`Error: ${err.message || err.toString()}`);
@@ -136,15 +162,20 @@ export const AgenticJobs: React.FC<AgenticJobsProps> = ({ connectedAccount, getP
 
       appendLog(`Approving ${budget} USDC...`);
       const approveTx = await usdc.approve(AGENTIC_COMMERCE_CONTRACT, budgetUnits);
-      await approveTx.wait();
-      appendLog("Approval successful!");
+      const approveReceipt = await approveTx.wait();
+      appendLog(`Approval successful! [Block: ${approveReceipt.blockNumber}]`);
 
       appendLog("Funding Escrow...");
       const fundTx = await agentic.fund(jobId, "0x");
-      await fundTx.wait();
-      appendLog("Funded successfully!");
+      const fundReceipt = await fundTx.wait();
+      addApiLog({
+        status: 200,
+        method: "POST",
+        path: `/v1/w3s/agentic-commerce/jobs/${jobId}/fund?hash=${fundTx.hash.substring(0, 10)}...`
+      });
+      appendLog(`Funded successfully! [Block: ${fundReceipt.blockNumber}]`);
       
-      await fetchJobStatus(jobId);
+      await fetchJobStatus(jobId, true);
 
     } catch (err: any) {
       appendLog(`Error: ${err.message || err.toString()}`);
@@ -163,16 +194,21 @@ export const AgenticJobs: React.FC<AgenticJobsProps> = ({ connectedAccount, getP
       appendLog("Submitting Deliverable...");
       const deliverableHash = ethers.id("arc-erc8183-demo-deliverable");
       const submitTx = await agentic.submit(jobId, deliverableHash, "0x");
-      await submitTx.wait();
-      appendLog("Submitted successfully!");
+      const submitReceipt = await submitTx.wait();
+      appendLog(`Submitted successfully! [Block: ${submitReceipt.blockNumber}]`);
 
       appendLog("Completing Job (Approving as Evaluator)...");
       const reasonHash = ethers.id("work-delivered-and-approved");
       const completeTx = await agentic.complete(jobId, reasonHash, "0x");
-      await completeTx.wait();
-      appendLog("Job Completed successfully!");
+      const completeReceipt = await completeTx.wait();
+      addApiLog({
+        status: 200,
+        method: "POST",
+        path: `/v1/w3s/agentic-commerce/jobs/${jobId}/complete?hash=${completeTx.hash.substring(0, 10)}...`
+      });
+      appendLog(`Job Completed successfully! [Block: ${completeReceipt.blockNumber}]`);
       
-      await fetchJobStatus(jobId);
+      await fetchJobStatus(jobId, true);
 
     } catch (err: any) {
       appendLog(`Error: ${err.message || err.toString()}`);
