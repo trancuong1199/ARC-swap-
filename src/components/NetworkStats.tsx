@@ -162,7 +162,10 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ connectedAccount }) 
                     <div className="swap-route" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {tx.action}: {tx.amount} USDC
                     </div>
-                    <div className="swap-time">{timeStr}</div>
+                    <div className="swap-time" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>{timeStr}</span>
+                      {tx.explorerUrl && <span style={{ fontSize: '0.7rem', color: '#a78bfa', fontStyle: 'italic', opacity: 0.8 }}>(Click for details)</span>}
+                    </div>
                   </div>
                   <div className="swap-amount" style={{ color: isError ? '#ef4444' : isPending ? '#eab308' : '#10b981', fontSize: '0.85rem', fontWeight: 600 }}>
                     {isError ? 'Failed' : isPending ? 'Pending...' : 'Success'}
