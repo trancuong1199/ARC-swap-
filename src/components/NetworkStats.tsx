@@ -105,7 +105,7 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ connectedAccount }) 
         </div>
       </div>
 
-      <div className="recent-swaps glass-panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
+      <div className="recent-swaps glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
         <div className="recent-swaps-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
             <Zap size={20} color="#8b5cf6" /> Recent Transactions
