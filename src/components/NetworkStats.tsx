@@ -105,9 +105,9 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ connectedAccount }) 
         </div>
       </div>
 
-      <div className="recent-swaps glass-panel" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div className="recent-swaps-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div className="recent-swaps glass-panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
+        <div className="recent-swaps-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
             <Zap size={20} color="#8b5cf6" /> Recent Transactions
           </div>
           {connectedAccount && (
@@ -158,13 +158,13 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ connectedAccount }) 
                   style={{ opacity: isError ? 0.6 : 1 }}
                   onClick={() => tx.explorerUrl && window.open(tx.explorerUrl, '_blank')}
                 >
-                  <div className="swap-info" style={{ overflow: 'hidden' }}>
+                  <div className="swap-info" style={{ overflow: 'hidden', minWidth: 0, width: '100%' }}>
                     <div className="swap-route" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {tx.amount === '0' 
                         ? tx.action 
                         : `${tx.action}: ${tx.amount} ${tx.tokenSymbol || 'USDC'}`}
                     </div>
-                    <div className="swap-time" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div className="swap-time" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <span>{timeStr}</span>
                       {tx.explorerUrl && <span style={{ fontSize: '0.7rem', color: '#a78bfa', fontStyle: 'italic', opacity: 0.8 }}>(Click for details)</span>}
                     </div>

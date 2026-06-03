@@ -9,7 +9,7 @@ import { CircleSmartContracts } from './components/CircleSmartContracts';
 import { Payments } from './components/Payments';
 import { FeaturesDoc } from './components/FeaturesDoc';
 import { BackgroundAnimation } from './components/BackgroundAnimation';
-import { Activity, Layers, Repeat, Wallet, X, ChevronDown } from 'lucide-react';
+import { Activity, Layers, Repeat, Wallet, X, ChevronDown, Menu } from 'lucide-react';
 
 type ViewState = 'swap' | 'payments' | 'logs' | 'analytics' | 'faucet' | 'contracts' | 'doc';
 
@@ -36,6 +36,7 @@ function getInitialView(): ViewState {
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewState>(getInitialView);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Listen for browser back/forward buttons
   useEffect(() => {
@@ -49,6 +50,7 @@ function App() {
   const navigateTo = (view: ViewState) => {
     startTransition(() => {
       setCurrentView(view);
+      setIsMobileMenuOpen(false);
     });
     window.history.pushState({}, '', `/${view === 'swap' ? '' : view}`);
   };
@@ -188,7 +190,21 @@ function App() {
     <>
       <BackgroundAnimation />
       <div className="app-container">
-      <aside className="sidebar animate-fade-in">
+      <div className="mobile-header">
+        <div className="nav-brand" onClick={() => navigateTo('swap')} style={{ cursor: 'pointer' }}>
+          <Activity color="#3b82f6" />
+          ARC Studio
+        </div>
+        <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
+          <Menu size={24} color="#f8fafc" />
+        </button>
+      </div>
+
+      {isMobileMenuOpen && (
+        <div className="mobile-menu-overlay" onClick={() => setIsMobileMenuOpen(false)}></div>
+      )}
+
+      <aside className={`sidebar animate-fade-in ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="nav-brand" onClick={() => navigateTo('swap')} style={{ cursor: 'pointer' }}>
           <Activity color="#3b82f6" />
           ARC Finance Studio

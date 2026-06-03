@@ -228,8 +228,8 @@ export const Logs: React.FC = () => {
                 transition: 'background 0.2s'
               }} className="hover:bg-white/5">
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '100px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '70px' }}>
                     <span style={{ 
                       color: req.status === 200 || req.status === 201 ? '#22c55e' : '#ef4444', 
                       fontWeight: 'bold',
@@ -240,12 +240,12 @@ export const Logs: React.FC = () => {
                     <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#e4e4e7' }}>{req.method}</span>
                   </div>
                   
-                  <div style={{ color: '#a1a1aa', fontSize: '0.9rem', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px' }}>
+                  <div style={{ color: '#a1a1aa', fontSize: '0.9rem', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
                     {req.path}
                   </div>
                 </div>
                 
-                <div style={{ fontSize: '0.8rem', color: '#71717a', textAlign: 'right' }}>
+                <div style={{ fontSize: '0.8rem', color: '#71717a', textAlign: 'right', whiteSpace: 'nowrap', marginLeft: '1rem' }}>
                   {req.time}
                 </div>
               </div>
